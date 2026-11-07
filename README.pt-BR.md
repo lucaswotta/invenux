@@ -215,7 +215,7 @@ Uma conexão SSH por máquina executa um único script de shell POSIX que lê:
 | `/sys/class/net`, `ip` | Adaptadores de rede, velocidade, driver, IPv4, MAC |
 | `dpkg`, `rpm`, `pacman`, `apk`, `/etc/timezone` | Pacotes instalados, fuso horário |
 
-Os slots de memória exigem root (`dmidecode`); sem root, esses campos aparecem como indisponíveis e o resto é coletado normalmente. O número de série só é coletado com `include_sensitive_identifiers` ativado no arquivo de configuração.
+Os slots de memória exigem root (`dmidecode`). Um usuário que não é root os obtém quando o sudo o deixa rodar o `dmidecode` sem senha (por exemplo `inventario ALL=(root) NOPASSWD: /usr/sbin/dmidecode` em `/etc/sudoers.d/`): a sonda então roda `sudo -n dmidecode -t memory`, que nunca pede senha e falha na hora sem essa regra. Sem nenhum dos dois, esses campos aparecem como indisponíveis e o resto é coletado normalmente. `Fontes utilizadas na coleta` nos relatórios diz se os slots vieram do `dmidecode`, do `sudo -n dmidecode` ou ficaram indisponíveis. Essa tentativa de sudo fica no log do sudo da máquina como qualquer outra, e um usuário fora do sudoers pode gerar o aviso do sudo ao administrador. O número de série só é coletado com `include_sensitive_identifiers` ativado no arquivo de configuração.
 
 ## Onde ficam os arquivos
 
@@ -243,7 +243,7 @@ Vulnerabilidades devem ser reportadas em privado, veja [SECURITY.md](SECURITY.md
 Não. O script só lê arquivos e executa comandos de leitura. Nada é gravado, nem em `/tmp`.
 
 **Por que todas as minhas máquinas mostram um único pente de memória?**
-Veja a linha **Slots** nos detalhes da máquina: ela mostra quantos slots estão ocupados do total da placa, com cada pente listado. Se aparecer indisponível, o usuário SSH não é root e o `dmidecode` não rodou.
+Veja a linha **Slots** nos detalhes da máquina: ela mostra quantos slots estão ocupados do total da placa, com cada pente listado. Se aparecer indisponível, o usuário SSH não é root e não tem regra de sudo sem senha para o `dmidecode`, veja [O que é coletado](#o-que-é-coletado).
 
 **Uma máquina aparece Offline, mas está ligada.**
 A linha diz o motivo. "Não respondeu na rede" significa nenhuma resposta em cerca de 3 segundos (em geral desligada ou endereço errado); "Conexão recusada na porta N" significa que está ligada, mas o SSH está parado, bloqueado ou em outra porta (ajuste no painel SSH); "Sem resposta em N s" indica firewall ou rede lenta, então aumente o timeout no painel SSH.
@@ -263,7 +263,7 @@ Sim, veja a linha de comando acima. Ela exige chave privada.
 ## Limitações
 
 - Os alvos precisam ser Linux com SSH, e todas as máquinas de uma coleta usam a mesma porta SSH.
-- Os detalhes dos slots de memória exigem root no alvo.
+- Os detalhes dos slots de memória exigem root ou sudo sem senha para o `dmidecode` no alvo.
 - O tipo de armazenamento identifica discos virtuais pelo modelo/fabricante/nome ou por hipervisor detectado. A detecção de hipervisor também classifica discos repassados à VM como Virtual. Os demais discos usam nome/transporte NVMe e a flag de rotação do kernel; mídia não rotativa inclui flash USB.
 - A linha de comando aceita só chave privada, não senha.
 

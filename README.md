@@ -215,7 +215,7 @@ One SSH connection per machine runs a single POSIX shell script that reads:
 | `/sys/class/net`, `ip` | Network adapters, link speed, driver, IPv4, MAC |
 | `dpkg`, `rpm`, `pacman`, `apk`, `/etc/timezone` | Installed packages, time zone |
 
-Memory slots need root (`dmidecode`); without it the slot fields show as unavailable and everything else is still collected. The serial number is not collected unless `include_sensitive_identifiers` is enabled in the configuration file.
+Memory slots need root (`dmidecode`). A user that is not root gets them when sudo lets it run `dmidecode` without a password (for example `inventory ALL=(root) NOPASSWD: /usr/sbin/dmidecode` in `/etc/sudoers.d/`): the probe then runs `sudo -n dmidecode -t memory`, which never asks for a password and fails at once without that rule. Without either, the slot fields show as unavailable and everything else is still collected. `Collection sources` in the reports says whether the slots came from `dmidecode`, `sudo -n dmidecode` or were unavailable. That sudo attempt is logged by sudo on the machine like any other, and a user missing from sudoers may trigger sudo's notice to the administrator. The serial number is not collected unless `include_sensitive_identifiers` is enabled in the configuration file.
 
 ## Where files are kept
 
@@ -243,7 +243,7 @@ Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 No. The script only reads files and runs read-only commands. It writes nothing, not even to `/tmp`.
 
 **Why do all my machines show a single memory module?**
-Check the **Slots** line in the machine details: it shows how many slots are populated out of how many the board has, with each module listed. If it says unavailable, the SSH user is not root and `dmidecode` could not run.
+Check the **Slots** line in the machine details: it shows how many slots are populated out of how many the board has, with each module listed. If it says unavailable, the SSH user is not root and has no passwordless sudo rule for `dmidecode`, see [What is collected](#what-is-collected).
 
 **A machine shows as Offline, but it is on.**
 The row says why. "Did not answer on the network" means no reply at all within about 3 seconds (often powered off or a wrong address); "Connection refused on port N" means it is on but SSH is stopped, blocked or listening on another port (set it in the SSH panel); "No answer within N s" means a firewall or a slow link, so raise the timeout in the SSH panel.
@@ -263,7 +263,7 @@ Yes, see the command line above. It needs a private key.
 ## Limitations
 
 - Targets must be Linux with SSH, and all machines in a collection share one SSH port.
-- Memory slot details need root on the target.
+- Memory slot details need root or passwordless sudo for `dmidecode` on the target.
 - Storage type identifies virtual disks by model/vendor/name or a detected hypervisor. Hypervisor detection also classifies passthrough disks as Virtual. Other disks use NVMe transport/name and the kernel's rotational flag; non-rotating media includes USB flash.
 - The command line accepts a private key only, not a password.
 

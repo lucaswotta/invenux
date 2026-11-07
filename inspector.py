@@ -432,8 +432,29 @@ cat /proc/meminfo 2>/dev/null || true
 printf '%s\n' '__INVENUX_END_meminfo__'
 
 printf '%s\n' '__INVENUX_BEGIN_memory_devices__'
-if command -v dmidecode >/dev/null 2>&1; then dmidecode -t memory 2>/dev/null || true; fi
+# Slots need root. A non-root user may hold NOPASSWD for dmidecode; sudo -n never prompts
+# and fails at once otherwise. /usr/sbin is often missing from a non-root PATH.
+mem_source=unavailable
+dmi=$(command -v dmidecode 2>/dev/null)
+for d in /usr/sbin/dmidecode /sbin/dmidecode; do [ -n "$dmi" ] || { [ -x "$d" ] && dmi=$d; }; done
+if [ -n "$dmi" ]; then
+  mem=$("$dmi" -t memory 2>/dev/null)
+  case "$mem" in
+    *'Memory Device'*) mem_source=dmidecode ;;
+    *)
+      if command -v sudo >/dev/null 2>&1; then
+        mem=$(sudo -n "$dmi" -t memory 2>/dev/null </dev/null)
+        case "$mem" in *'Memory Device'*) mem_source=sudo ;; esac
+      fi
+      ;;
+  esac
+  [ "$mem_source" = unavailable ] || printf '%s\n' "$mem"
+fi
 printf '%s\n' '__INVENUX_END_memory_devices__'
+
+printf '%s\n' '__INVENUX_BEGIN_memory_source__'
+printf '%s\n' "$mem_source"
+printf '%s\n' '__INVENUX_END_memory_source__'
 
 printf '%s\n' '__INVENUX_BEGIN_lsblk__'
 if command -v lsblk >/dev/null 2>&1; then
@@ -911,10 +932,15 @@ def _collect_linux_hardware(
     system_source = "SMBIOS sysfs" if dmi else "SMBIOS fields unavailable"
     memory_source = "/proc/meminfo" if total_bytes else "memory statistics unavailable"
     storage_source = "lsblk JSON" if drives else "lsblk unavailable or access restricted"
+    slot_source = {
+        "dmidecode": "dmidecode",
+        "sudo": "sudo -n dmidecode",
+    }.get(_clean_string(sections.get("memory_source", "")), "unavailable (needs root or passwordless sudo for dmidecode)")
     source_parts = [
         f"OS: {'/etc/os-release' if os_release else 'release-file fallback'}",
         f"CPU: {cpu_source}",
         f"Memory: {memory_source}",
+        f"Memory slots: {slot_source}",
         f"Storage: {storage_source}",
         f"System/board/firmware: {system_source}",
         f"Graphics: {'lspci/sysfs' if gpus else 'not reported'}",

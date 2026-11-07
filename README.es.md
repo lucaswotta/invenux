@@ -215,7 +215,7 @@ Una conexión SSH por equipo ejecuta un único script de shell POSIX que lee:
 | `/sys/class/net`, `ip` | Adaptadores de red, velocidad, driver, IPv4, MAC |
 | `dpkg`, `rpm`, `pacman`, `apk`, `/etc/timezone` | Paquetes instalados, zona horaria |
 
-Las ranuras de memoria requieren root (`dmidecode`); sin root, esos campos aparecen como no disponibles y el resto se recopila igual. El número de serie solo se recopila con `include_sensitive_identifiers` activado en el archivo de configuración.
+Las ranuras de memoria requieren root (`dmidecode`). Un usuario que no es root las obtiene cuando sudo le permite ejecutar `dmidecode` sin contraseña (por ejemplo `inventario ALL=(root) NOPASSWD: /usr/sbin/dmidecode` en `/etc/sudoers.d/`): la sonda ejecuta entonces `sudo -n dmidecode -t memory`, que nunca pide contraseña y falla al instante sin esa regla. Sin ninguno de los dos, esos campos aparecen como no disponibles y el resto se recopila igual. `Fuentes de la recopilación` en los informes indica si las ranuras salieron de `dmidecode`, de `sudo -n dmidecode` o no estuvieron disponibles. Ese intento de sudo queda en el registro de sudo del equipo como cualquier otro, y un usuario fuera de sudoers puede generar el aviso de sudo al administrador. El número de serie solo se recopila con `include_sensitive_identifiers` activado en el archivo de configuración.
 
 ## Dónde se guardan los archivos
 
@@ -243,7 +243,7 @@ Las vulnerabilidades se reportan en privado, vea [SECURITY.md](SECURITY.md).
 No. El script solo lee archivos y ejecuta comandos de lectura. No escribe nada, ni siquiera en `/tmp`.
 
 **¿Por qué todos mis equipos muestran un solo módulo de memoria?**
-Mire la línea **Ranuras** en los detalles del equipo: muestra cuántas ranuras están ocupadas del total de la placa, con cada módulo listado. Si aparece no disponible, el usuario SSH no es root y `dmidecode` no pudo ejecutarse.
+Mire la línea **Ranuras** en los detalles del equipo: muestra cuántas ranuras están ocupadas del total de la placa, con cada módulo listado. Si aparece no disponible, el usuario SSH no es root y no tiene una regla de sudo sin contraseña para `dmidecode`, vea [Qué se recopila](#qué-se-recopila).
 
 **Un equipo aparece Sin conexión, pero está encendido.**
 La fila indica el motivo. "No respondió en la red" significa ninguna respuesta en unos 3 segundos (normalmente apagado o dirección incorrecta); "Conexión rechazada en el puerto N" significa que está encendido, pero el SSH está detenido, bloqueado o en otro puerto (ajústelo en el panel SSH); "Sin respuesta en N s" indica un cortafuegos o una red lenta, así que aumente el tiempo límite en el panel SSH.
@@ -263,7 +263,7 @@ Sí, vea la línea de comandos arriba. Requiere clave privada.
 ## Limitaciones
 
 - Los destinos deben ser Linux con SSH, y todos los equipos de una recopilación comparten un puerto SSH.
-- Los detalles de las ranuras de memoria requieren root en el destino.
+- Los detalles de las ranuras de memoria requieren root o sudo sin contraseña para `dmidecode` en el destino.
 - El tipo de almacenamiento identifica discos virtuales por modelo/fabricante/nombre o por un hipervisor detectado. La detección de hipervisor también clasifica los discos pasados a la VM como Virtual. Los demás discos usan nombre/transporte NVMe y el indicador de rotación del kernel; el medio no rotativo incluye memoria flash USB.
 - La línea de comandos solo acepta clave privada, no contraseña.
 
