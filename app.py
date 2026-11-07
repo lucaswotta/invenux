@@ -38,8 +38,8 @@ from paths import (
     get_user_data_dir,
     save_user_config,
 )
-from reporting import create_template_workbook, save_report, save_snapshot_diff, template_filename
-from snapshots import SnapshotStore, compute_fleet_analytics
+from reporting import create_template_workbook, save_change_report, save_report, save_snapshot_diff, template_filename
+from snapshots import SnapshotStore, compute_fleet_analytics, compute_hardware_changes
 import updates as release_updates
 
 APP_BRAND = "Invenux"
@@ -118,6 +118,7 @@ class InventoryController:
         self.targets_info: dict[str, Any] = {}
         self.update_info: dict[str, Any] = {"state": "idle"}
         self.active_engine: InventoryEngine | None = None
+        self.last_snapshot_id: int | None = None
         self._bootstrap_initial_records()
         self.revision = 0
         self.reset_revision = 0
@@ -147,6 +148,8 @@ class InventoryController:
             "system_language": system_language(),
             "theme_choice": "system",
             "check_updates": True,
+            "snapshot_keep_last": 0,
+            "snapshot_keep_days": 0,
         }
         try:
             if self.config_path.is_file():
@@ -173,6 +176,8 @@ class InventoryController:
                     if saved.get("theme_choice") in THEME_CHOICES:
                         defaults["theme_choice"] = saved["theme_choice"]
                     defaults["check_updates"] = bool(saved.get("check_updates", True))
+                    defaults["snapshot_keep_last"] = _retention(saved.get("snapshot_keep_last", 0))
+                    defaults["snapshot_keep_days"] = _retention(saved.get("snapshot_keep_days", 0))
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             pass
         return defaults
@@ -193,6 +198,8 @@ class InventoryController:
             "include_sensitive_identifiers": bool(self.config.get("include_sensitive_identifiers", False)),
             "report_format": str(self.config.get("output_format", "XLSX")).upper(),
             "check_updates": bool(self.config.get("check_updates", True)),
+            "snapshot_keep_last": int(self.config.get("snapshot_keep_last", 0)),
+            "snapshot_keep_days": int(self.config.get("snapshot_keep_days", 0)),
         }
         if self.config.get("theme_choice") in THEME_CHOICES:
             persisted["theme_choice"] = self.config["theme_choice"]
@@ -264,6 +271,9 @@ class InventoryController:
                 self.config["theme_choice"] = choice if choice in THEME_CHOICES else "system"
             if "check_updates" in updates:
                 self.config["check_updates"] = bool(updates["check_updates"])
+            for key in ("snapshot_keep_last", "snapshot_keep_days"):
+                if key in updates:
+                    self.config[key] = _retention(updates[key])
             self._persist_non_secret_config()
             return self.public_config()
 
@@ -456,11 +466,25 @@ class InventoryController:
             raise ValueError(t("app_unknown_location"))
         _open_externally(chosen)
 
-    def export_snapshot_diff(self, snapshot_id: int) -> Path:
-        changes = self.snapshot_store.compute_diff(snapshot_id)["changes"]
-        if not changes:
+    def export_snapshot_diff(self, snapshot_id: int, base_snapshot_id: int | None = None) -> Path:
+        diff = self.snapshot_store.compute_diff(snapshot_id, base_snapshot_id)
+        if not diff["changes"]:
             raise ValueError(t("app_no_changes_to_export"))
-        return save_snapshot_diff(changes, get_reports_dir(), snapshot_id, get_language())
+        return save_snapshot_diff(
+            diff["changes"], get_reports_dir(), snapshot_id, get_language(),
+            base_snapshot=diff["base_snapshot"], snapshot=diff["snapshot"],
+        )
+
+    def delete_snapshot(self, snapshot_id: int) -> dict[str, Any]:
+        with self.lock:
+            if self.scanning:
+                raise ValueError(t("app_scan_running"))
+        if not self.snapshot_store.delete_snapshots([snapshot_id]):
+            raise ValueError(t("app_snapshot_not_found", snapshot_id=snapshot_id))
+        with self.lock:
+            self.snapshots = self.snapshot_store.list_snapshots(limit=50)
+            self.status_text = t("app_snapshot_deleted", snapshot_id=snapshot_id)
+        return self.get_state()
 
     def load_snapshot_into_workspace(self, snapshot_id: int) -> dict[str, Any]:
         snap = self.snapshot_store.get_snapshot(snapshot_id)
@@ -471,6 +495,17 @@ class InventoryController:
             self._reset_records()
             self.status_text = t("app_viewing_snapshot", created_at=snap["created_at"])
         return self.get_state()
+
+    def write_change_report(self, path: str | Path) -> Path:
+        """Hardware changes of the last collection against the snapshot before it."""
+        changes: list[dict[str, str]] = []
+        if self.last_snapshot_id is not None:
+            diff = self.snapshot_store.compute_diff(self.last_snapshot_id)
+            if diff["base_snapshot"] is not None:
+                base = self.snapshot_store.get_snapshot(diff["base_snapshot"]["id"]) or {}
+                current = self.snapshot_store.get_snapshot(self.last_snapshot_id) or {}
+                changes = compute_hardware_changes(base.get("records", []), current.get("records", []))
+        return save_change_report(changes, Path(path).expanduser(), get_language())
 
     def start_scan(self) -> dict[str, Any]:
         with self.lock:
@@ -568,12 +603,16 @@ class InventoryController:
 
         if final_records:
             try:
-                self.snapshot_store.save_snapshot(
+                saved = self.snapshot_store.save_snapshot(
                     all_records,
                     source_name=source_name,
                     duration_seconds=elapsed,
                 )
+                self.snapshot_store.prune(
+                    int(self.config.get("snapshot_keep_last", 0)), int(self.config.get("snapshot_keep_days", 0))
+                )
                 with self.lock:
+                    self.last_snapshot_id = saved["id"]
                     self.snapshots = self.snapshot_store.list_snapshots(limit=50)
             except Exception:
                 logging.getLogger(__name__).warning("Failed to save local snapshot", exc_info=True)
@@ -589,6 +628,14 @@ def _valid_port(value: Any) -> int:
     except (TypeError, ValueError):
         return 22
     return port if 1 <= port <= 65535 else 22
+
+
+def _retention(value: Any) -> int:
+    """A retention count or number of days; 0 (keep everything) for anything else."""
+    try:
+        return max(0, min(int(value), 100_000))
+    except (TypeError, ValueError):
+        return 0
 
 
 def _check_access(
@@ -742,7 +789,8 @@ def create_http_server(
             if match_diff:
                 try:
                     snap_id = int(match_diff.group(1))
-                    self._send_json(controller.snapshot_store.compute_diff(snap_id))
+                    base = parse_qs(parsed.query).get("base", [""])[0]
+                    self._send_json(controller.snapshot_store.compute_diff(snap_id, int(base) if base else None))
                 except ValueError as exc:
                     self._send_json({"error": str(exc)}, status=HTTPStatus.NOT_FOUND)
                 return
@@ -831,8 +879,16 @@ def create_http_server(
 
                 match_export = re.fullmatch(r"/api/snapshots/(\d+)/diff/export", path)
                 if match_export:
-                    out_path = controller.export_snapshot_diff(int(match_export.group(1)))
+                    base = payload.get("base")
+                    out_path = controller.export_snapshot_diff(
+                        int(match_export.group(1)), int(base) if base not in (None, "") else None
+                    )
                     self._send_json({"path": str(out_path)})
+                    return
+
+                match_delete = re.fullmatch(r"/api/snapshots/(\d+)/delete", path)
+                if match_delete:
+                    self._send_json(controller.delete_snapshot(int(match_delete.group(1))))
                     return
 
                 match_load = re.fullmatch(r"/api/snapshots/(\d+)/load", path)
@@ -964,6 +1020,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--jump-port", type=int, default=22, help="SSH port of the bastion (default: 22).")
     parser.add_argument("--jump-user", type=str, help="User on the bastion (default: the --user value).")
     parser.add_argument("--output-format", type=str, default="XLSX", choices=["XLSX", "CSV", "HTML"])
+    parser.add_argument(
+        "--report-changes",
+        type=str,
+        metavar="FILE",
+        help="Write the hardware changes against the previous snapshot to this CSV; "
+        "the file is empty when nothing changed.",
+    )
     args = parser.parse_args(argv)
 
     setup_logging()
@@ -993,6 +1056,8 @@ def main(argv: list[str] | None = None) -> int:
             while controller.get_state()["scanning"]:
                 time.sleep(0.2)
             report = controller.export_current(args.output_format)
+            if args.report_changes:
+                controller.write_change_report(args.report_changes)
         except ValueError as exc:
             print(exc, file=sys.stderr)
             return 2

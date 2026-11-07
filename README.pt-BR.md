@@ -59,7 +59,7 @@ Sem agente e só leitura: nada é instalado ou gravado nas máquinas.
 | **Sistema** | Distribuição, versão e codinome, kernel, arquitetura, hostname, ambiente gráfico e servidor de vídeo, telas, quantidade de pacotes, init, fuso horário, tempo ligado, uso do disco `/`. |
 | **Hardware** | Fabricante e modelo, placa-mãe, BIOS, processador com núcleos, threads e frequência, cada slot de memória (tamanho, tipo, velocidade, modelo do pente) e o máximo da placa, cada disco e partição, vídeo, adaptadores de rede com IPv4 e MAC. |
 | **Parque** | Tipos de armazenamento, capacidade de memória e distribuições Linux das máquinas acessíveis, e a divisão por local. |
-| **Snapshots** | Histórico local de cada coleta com comparação campo a campo, exportável em CSV. |
+| **Snapshots** | Histórico local de cada coleta com comparação campo a campo com o anterior ou com qualquer outro (**Comparar com**), exportável em CSV com as duas datas. Exclua um snapshot (com confirmação) ou defina a retenção em Sobre e ajustes (manter os últimos N, ou os dos últimos N dias; aplicada ao fim de cada coleta, o mais recente sempre fica). |
 | **Exportação** | Excel (resumo com barras de proporção, inventário agrupado por assunto), HTML interativo que funciona offline, CSV com proteção contra fórmulas. |
 | **Interface** | Português, inglês e espanhol, seguindo o idioma do sistema; guia embutido com tutorial animado; redimensionável até 720 × 520. |
 | **Desktop** | Janela nativa no Linux, Windows e macOS (pywebview ou GTK), ou o navegador; pacotes prontos para os três sistemas; janela Sobre e ajustes (rodapé da barra lateral ou nome do app) com idioma, tema claro ou escuro, versão e atualização com um clique quando sai versão nova. |
@@ -152,6 +152,41 @@ python3 app.py --input maquinas.xlsx --user inventario --ask-password
 python3 app.py --input maquinas.xlsx --user inventario --agent --jump-host bastion.example.com --jump-user admin
 ```
 
+### Coletas agendadas
+
+`--report-changes ARQUIVO` faz uma coleta pela linha de comando gravar também as mudanças de hardware (processador, memória, armazenamento, placa-mãe) em relação ao snapshot anterior, das máquinas que estavam online nas duas coletas. Mudanças de status, sistema e kernel ficam de fora, e o arquivo fica vazio (0 bytes) quando nada mudou, para o agendador agir só quando houver conteúdo. Cada coleta grava um snapshot que aparece na visão Snapshots. Use chave, porque não há ninguém para digitar senha; os exemplos usam a instalação Linux (`~/.local/bin/invenux`), e `python3 /caminho/para/invenux/app.py` funciona igual a partir do código.
+
+cron (toda segunda às 07:00, manda as mudanças por e-mail quando houver):
+
+```sh
+0 7 * * 1 $HOME/.local/bin/invenux --input $HOME/inventario/maquinas.xlsx --user inventario --key $HOME/.ssh/id_ed25519 --report-changes $HOME/inventario/mudancas.csv && [ -s $HOME/inventario/mudancas.csv ] && mail -s "Mudancas de hardware" admin@example.com < $HOME/inventario/mudancas.csv
+```
+
+Timer do systemd (`~/.config/systemd/user/invenux.service` e `invenux.timer`, depois `systemctl --user enable --now invenux.timer`):
+
+```ini
+# invenux.service
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/invenux --input %h/inventario/maquinas.xlsx --user inventario --key %h/.ssh/id_ed25519 --report-changes %h/inventario/mudancas.csv
+
+# invenux.timer
+[Timer]
+OnCalendar=Mon 07:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Agendador de Tarefas do Windows (PowerShell, toda segunda às 07:00):
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "C:\Ferramentas\invenux.exe" -Argument '--input C:\Inventario\maquinas.xlsx --user inventario --key C:\Users\eu\.ssh\id_ed25519 --report-changes C:\Inventario\mudancas.csv'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 7am
+Register-ScheduledTask -TaskName "Inventario Invenux" -Action $action -Trigger $trigger
+```
+
 ## A planilha
 
 `.xlsx`, `.xlsm` ou `.csv` (vírgula ou ponto e vírgula). A primeira linha é o cabeçalho e cada linha seguinte é uma máquina.
@@ -181,7 +216,7 @@ Uma conexão SSH por máquina executa um único script de shell POSIX que lê:
 | `/sys/class/net`, `ip` | Adaptadores de rede, velocidade, driver, IPv4, MAC |
 | `dpkg`, `rpm`, `pacman`, `apk`, `/etc/timezone` | Pacotes instalados, fuso horário |
 
-Os slots de memória exigem root (`dmidecode`); sem root, esses campos aparecem como indisponíveis e o resto é coletado normalmente. O número de série só é coletado com `include_sensitive_identifiers` ativado no arquivo de configuração.
+Os slots de memória exigem root (`dmidecode`). Um usuário que não é root os obtém quando o sudo o deixa rodar o `dmidecode` sem senha (por exemplo `inventario ALL=(root) NOPASSWD: /usr/sbin/dmidecode` em `/etc/sudoers.d/`): a sonda então roda `sudo -n dmidecode -t memory`, que nunca pede senha e falha na hora sem essa regra. Sem nenhum dos dois, esses campos aparecem como indisponíveis e o resto é coletado normalmente. `Fontes utilizadas na coleta` nos relatórios diz se os slots vieram do `dmidecode`, do `sudo -n dmidecode` ou ficaram indisponíveis. Essa tentativa de sudo fica no log do sudo da máquina como qualquer outra, e um usuário fora do sudoers pode gerar o aviso do sudo ao administrador. O número de série só é coletado com `include_sensitive_identifiers` ativado no arquivo de configuração.
 
 ## Onde ficam os arquivos
 
@@ -209,7 +244,7 @@ Vulnerabilidades devem ser reportadas em privado, veja [SECURITY.md](SECURITY.md
 Não. O script só lê arquivos e executa comandos de leitura. Nada é gravado, nem em `/tmp`.
 
 **Por que todas as minhas máquinas mostram um único pente de memória?**
-Veja a linha **Slots** nos detalhes da máquina: ela mostra quantos slots estão ocupados do total da placa, com cada pente listado. Se aparecer indisponível, o usuário SSH não é root e o `dmidecode` não rodou.
+Veja a linha **Slots** nos detalhes da máquina: ela mostra quantos slots estão ocupados do total da placa, com cada pente listado. Se aparecer indisponível, o usuário SSH não é root e não tem regra de sudo sem senha para o `dmidecode`, veja [O que é coletado](#o-que-é-coletado).
 
 **Uma máquina aparece Offline, mas está ligada.**
 A linha diz o motivo. "Não respondeu na rede" significa nenhuma resposta em cerca de 3 segundos (em geral desligada ou endereço errado); "Conexão recusada na porta N" significa que está ligada, mas o SSH está parado, bloqueado ou em outra porta (ajuste no painel SSH); "Sem resposta em N s" indica firewall ou rede lenta, então aumente o timeout no painel SSH.
@@ -229,7 +264,7 @@ Sim, veja a linha de comando acima. Ela exige chave privada.
 ## Limitações
 
 - Os alvos precisam ser Linux com SSH, e todas as máquinas de uma coleta usam a mesma porta SSH.
-- Os detalhes dos slots de memória exigem root no alvo.
+- Os detalhes dos slots de memória exigem root ou sudo sem senha para o `dmidecode` no alvo.
 - O tipo de armazenamento identifica discos virtuais pelo modelo/fabricante/nome ou por hipervisor detectado. A detecção de hipervisor também classifica discos repassados à VM como Virtual. Os demais discos usam nome/transporte NVMe e a flag de rotação do kernel; mídia não rotativa inclui flash USB.
 - A linha de comando aceita só chave privada, não senha.
 

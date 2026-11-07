@@ -59,7 +59,7 @@ Agentless and read-only: nothing is installed or written on the machines.
 | **System** | Distribution, version and codename, kernel, architecture, hostname, desktop and display server, displays, package count, init, time zone, uptime, root disk usage. |
 | **Hardware** | Manufacturer and model, motherboard, BIOS, processor with cores, threads and frequency, every memory slot (size, type, speed, part number) and the board's maximum, every disk and partition, graphics, network adapters with IPv4 and MAC. |
 | **Fleet view** | Storage types, memory capacity and Linux distributions across the online machines, and a breakdown by location. |
-| **Snapshots** | Local history of every collection with a field-by-field comparison, exportable to CSV. |
+| **Snapshots** | Local history of every collection with a field-by-field comparison against the previous one or any other (**Compare with**), exportable to CSV with both dates. Delete a snapshot (asks first) or set a retention in About and settings (keep the last N, or the last N days; applied after each collection, the newest is always kept). |
 | **Exports** | Excel (summary with data bars, inventory grouped by subject), interactive HTML that works offline, CSV with formula injection neutralized. |
 | **Interface** | English, Portuguese (Brazil) and Spanish, following the system language; built-in guide with an animated tutorial; resizable down to 720 × 520. |
 | **Desktop** | Native window on Linux, Windows and macOS (pywebview or GTK), or your browser; packaged builds for the three systems; an About and settings sheet (sidebar footer or the app name) with language, light or dark theme, the version and a one-click update to a newer release. |
@@ -152,6 +152,41 @@ python3 app.py --input machines.xlsx --user inventory --ask-password
 python3 app.py --input machines.xlsx --user inventory --agent --jump-host bastion.example.com --jump-user admin
 ```
 
+### Scheduled collections
+
+`--report-changes FILE` makes a command-line run also write the hardware changes (processor, memory, storage, motherboard) against the previous snapshot, for machines that were online in both runs. Status, system and kernel changes are left out, and the file is empty (0 bytes) when nothing changed, so a scheduler can act only when it has content. Every run saves a snapshot that shows up in the Snapshots view. Use a key, since there is nobody to type a password; the examples use the Linux install (`~/.local/bin/invenux`), and `python3 /path/to/invenux/app.py` works the same from source.
+
+cron (every Monday at 07:00, mail the changes when there are any):
+
+```sh
+0 7 * * 1 $HOME/.local/bin/invenux --input $HOME/inventory/machines.xlsx --user inventory --key $HOME/.ssh/id_ed25519 --report-changes $HOME/inventory/changes.csv && [ -s $HOME/inventory/changes.csv ] && mail -s "Hardware changes" admin@example.com < $HOME/inventory/changes.csv
+```
+
+systemd timer (`~/.config/systemd/user/invenux.service` and `invenux.timer`, then `systemctl --user enable --now invenux.timer`):
+
+```ini
+# invenux.service
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/invenux --input %h/inventory/machines.xlsx --user inventory --key %h/.ssh/id_ed25519 --report-changes %h/inventory/changes.csv
+
+# invenux.timer
+[Timer]
+OnCalendar=Mon 07:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Windows Task Scheduler (PowerShell, every Monday at 07:00):
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "C:\Tools\invenux.exe" -Argument '--input C:\Inventory\machines.xlsx --user inventory --key C:\Users\me\.ssh\id_ed25519 --report-changes C:\Inventory\changes.csv'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 7am
+Register-ScheduledTask -TaskName "Invenux inventory" -Action $action -Trigger $trigger
+```
+
 ## The spreadsheet
 
 `.xlsx`, `.xlsm` or `.csv` (comma or semicolon). The first row is the header and every following row is a machine.
@@ -181,7 +216,7 @@ One SSH connection per machine runs a single POSIX shell script that reads:
 | `/sys/class/net`, `ip` | Network adapters, link speed, driver, IPv4, MAC |
 | `dpkg`, `rpm`, `pacman`, `apk`, `/etc/timezone` | Installed packages, time zone |
 
-Memory slots need root (`dmidecode`); without it the slot fields show as unavailable and everything else is still collected. The serial number is not collected unless `include_sensitive_identifiers` is enabled in the configuration file.
+Memory slots need root (`dmidecode`). A user that is not root gets them when sudo lets it run `dmidecode` without a password (for example `inventory ALL=(root) NOPASSWD: /usr/sbin/dmidecode` in `/etc/sudoers.d/`): the probe then runs `sudo -n dmidecode -t memory`, which never asks for a password and fails at once without that rule. Without either, the slot fields show as unavailable and everything else is still collected. `Collection sources` in the reports says whether the slots came from `dmidecode`, `sudo -n dmidecode` or were unavailable. That sudo attempt is logged by sudo on the machine like any other, and a user missing from sudoers may trigger sudo's notice to the administrator. The serial number is not collected unless `include_sensitive_identifiers` is enabled in the configuration file.
 
 ## Where files are kept
 
@@ -209,7 +244,7 @@ Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 No. The script only reads files and runs read-only commands. It writes nothing, not even to `/tmp`.
 
 **Why do all my machines show a single memory module?**
-Check the **Slots** line in the machine details: it shows how many slots are populated out of how many the board has, with each module listed. If it says unavailable, the SSH user is not root and `dmidecode` could not run.
+Check the **Slots** line in the machine details: it shows how many slots are populated out of how many the board has, with each module listed. If it says unavailable, the SSH user is not root and has no passwordless sudo rule for `dmidecode`, see [What is collected](#what-is-collected).
 
 **A machine shows as Offline, but it is on.**
 The row says why. "Did not answer on the network" means no reply at all within about 3 seconds (often powered off or a wrong address); "Connection refused on port N" means it is on but SSH is stopped, blocked or listening on another port (set it in the SSH panel); "No answer within N s" means a firewall or a slow link, so raise the timeout in the SSH panel.
@@ -229,7 +264,7 @@ Yes, see the command line above. It needs a private key.
 ## Limitations
 
 - Targets must be Linux with SSH, and all machines in a collection share one SSH port.
-- Memory slot details need root on the target.
+- Memory slot details need root or passwordless sudo for `dmidecode` on the target.
 - Storage type identifies virtual disks by model/vendor/name or a detected hypervisor. Hypervisor detection also classifies passthrough disks as Virtual. Other disks use NVMe transport/name and the kernel's rotational flag; non-rotating media includes USB flash.
 - The command line accepts a private key only, not a password.
 

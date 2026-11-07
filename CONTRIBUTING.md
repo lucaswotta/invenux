@@ -18,8 +18,9 @@ Windows PowerShell uses `.venv\\Scripts\\Activate.ps1` for activation.
 
 ## Polling checks
 
-`node tests/test_polling_ui.mjs` checks incremental table updates using Node's
-standard library; no `node_modules` are needed. To check scrolling in a browser,
+`node --test tests/*.mjs` runs the interface checks (incremental table updates,
+keyboard navigation of the table, the SSH form) using Node's standard library;
+no `node_modules` are needed. To check scrolling in a browser,
 run `python scripts/demo_server.py --machines 3000`, load the printed spreadsheet,
 and start collection with fictional SSH credentials.
 
