@@ -12,7 +12,7 @@ Notable changes to Invenux (called Invent-SSH up to 0.5.0) are recorded here.
 - `--report-changes FILE` writes the hardware changes since the previous snapshot after a command-line collection; the file is empty when nothing changed, for cron, systemd timers and Task Scheduler (#35).
 - Memory slots for non-root users: when plain `dmidecode` shows no devices, the probe tries `sudo -n dmidecode -t memory`, which never prompts. `dmidecode` is also found in `/usr/sbin` and `/sbin` (#33).
 - Native file dialog on Windows and macOS (pywebview, then PowerShell or `osascript`), so Choose spreadsheet keeps the original path instead of an uploaded copy (#36). Not run on Windows or macOS yet (#38).
-- `invenux_<version>_amd64.deb` next to the Linux `.tar.xz`, installed in `/opt/invenux` with the `invenux` command and a menu entry (#37). The release job and an `apt` install were not run yet (#38).
+- `invenux_<version>_amd64.deb` next to the Linux `.tar.xz`, installed in `/opt/invenux` with the `invenux` command and a menu entry (#37). The release job builds it and lists it in `SHA256SUMS`; installing it with `apt` is not checked yet (#38).
 
 ### Changed
 
