@@ -108,6 +108,7 @@ Baixe o arquivo do seu sistema na [última versão](https://github.com/lucaswott
 | Windows 10/11 (x86_64) | `invenux-<versão>-windows-x86_64.exe` | Execute. O SmartScreen avisa que o programa não é assinado: **Mais informações** e depois **Executar assim mesmo**. |
 | macOS (Apple Silicon ou Intel) | `invenux-<versão>-macos-arm64.zip` ou `-macos-x86_64.zip` | Descompacte e abra o `Invenux.app`. Na primeira vez, clique com o botão direito e escolha **Abrir**, porque o app não é notarizado. |
 | Linux (x86_64, glibc 2.35 ou mais recente) | `invenux-<versão>-linux-x86_64.tar.xz` | Extraia e rode `./install.sh` para colocar no menu de aplicativos, ou rode `./invenux` na pasta. |
+| Debian, Ubuntu e derivados (x86_64) | `invenux_<versão>_amd64.deb` | `sudo apt install ./invenux_<versão>_amd64.deb` instala em `/opt/invenux` com o comando `invenux` e a entrada no menu; `sudo apt remove invenux` remove. |
 
 Os pacotes não têm assinatura de código; o `SHA256SUMS` da versão lista os checksums. Cada um abre a própria janela: WebView2 no Windows (parte do Windows 10 e 11), WebKit no macOS e um Qt WebEngine embutido no Linux, por isso o download do Linux tem cerca de 135 MB.
 
