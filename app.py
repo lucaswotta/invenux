@@ -673,25 +673,97 @@ def _open_externally(path: Path | str) -> None:
         subprocess.Popen(["xdg-open", str(path)], env=external_program_env())
 
 
-def _pick_local_file(title: str, patterns: list[str] | None = None) -> str | None:
-    """Open a native OS file picker without requiring tkinter when zenity/kdialog is available."""
+# The pywebview window, when there is one; its file dialog is the system's own on every platform.
+_webview_window: Any = None
+
+# WinForms dialog run by PowerShell. The title arrives in an environment variable, so no
+# quoting is needed, and a hidden topmost owner keeps the dialog above the Invenux window.
+_WINDOWS_DIALOG_SCRIPT = (
+    "[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
+    "Add-Type -AssemblyName System.Windows.Forms; "
+    "$owner = New-Object System.Windows.Forms.Form -Property @{TopMost = $true}; "
+    "$dialog = New-Object System.Windows.Forms.OpenFileDialog; "
+    "$dialog.Title = $env:INVENUX_DIALOG_TITLE; "
+    "$dialog.Filter = $env:INVENUX_DIALOG_FILTER; "
+    "if ($dialog.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) "
+    "{ [Console]::Out.Write($dialog.FileName) }"
+)
+
+
+def _extensions(patterns: list[str] | None) -> list[str]:
+    return [pattern.lstrip("*.") for pattern in patterns or [] if pattern.startswith("*.")]
+
+
+def _dialog_command(platform: str, title: str, patterns: list[str] | None) -> tuple[list[str], dict[str, str]] | None:
+    """The system file dialog for this platform as (argv, extra environment); None when there is none."""
+    extensions = _extensions(patterns)
+    if platform == "darwin":
+        # The prompt is passed as an argument, never spliced into the AppleScript source.
+        choose = "choose file with prompt (item 1 of argv)"
+        if extensions:
+            choose += " of type {" + ", ".join(f'"{ext}"' for ext in extensions) + "}"
+        return ["osascript", "-e", "on run argv", "-e", f"POSIX path of ({choose})", "-e", "end run", title], {}
+    if platform == "win32":
+        spec = ";".join(f"*.{ext}" for ext in extensions)
+        dialog_filter = f"{spec}|{spec}|*.*|*.*" if spec else "*.*|*.*"
+        command = ["powershell", "-NoProfile", "-NonInteractive", "-STA", "-Command", _WINDOWS_DIALOG_SCRIPT]
+        return command, {"INVENUX_DIALOG_TITLE": title, "INVENUX_DIALOG_FILTER": dialog_filter}
     if shutil.which("zenity"):
-        cmd = ["zenity", "--file-selection", f"--title={title}"]
+        command = ["zenity", "--file-selection", f"--title={title}"]
         if patterns:
-            cmd.append(f"--file-filter={' '.join(patterns)}")
-        completed = subprocess.run(cmd, check=False, capture_output=True, text=True, env=external_program_env())
-        if completed.returncode == 0 and completed.stdout.strip():
-            return completed.stdout.strip()
-        return None
+            command.append(f"--file-filter={' '.join(patterns)}")
+        return command, {}
     if shutil.which("kdialog"):
-        cmd = ["kdialog", "--getopenfilename", str(Path.home())]
+        command = ["kdialog", "--getopenfilename", str(Path.home())]
         if patterns:
-            cmd.append(" ".join(patterns))
-        completed = subprocess.run(cmd, check=False, capture_output=True, text=True, env=external_program_env())
-        if completed.returncode == 0 and completed.stdout.strip():
-            return completed.stdout.strip()
-        return None
+            command.append(" ".join(patterns))
+        return command, {}
     return None
+
+
+def _webview_dialog(patterns: list[str] | None) -> str | None:
+    import webview  # type: ignore
+
+    # pywebview 5 renamed OPEN_DIALOG to FileDialog.OPEN.
+    dialog_type = getattr(getattr(webview, "FileDialog", None), "OPEN", None) or webview.OPEN_DIALOG
+    # pywebview parses "Description (*.a;*.b)"; a bare pattern is rejected.
+    spec = ";".join(patterns or [])
+    file_types = (f"Spreadsheets ({spec})", "All files (*.*)") if spec else ()
+    chosen = _webview_window.create_file_dialog(dialog_type, file_types=file_types)
+    if isinstance(chosen, (list, tuple)):
+        chosen = chosen[0] if chosen else None
+    return str(chosen) if chosen else None
+
+
+def _pick_local_file(title: str, patterns: list[str] | None = None) -> str | None:
+    """Open the system file dialog; None when cancelled or when no dialog exists here.
+
+    Linux keeps zenity/kdialog first; on Windows and macOS the pywebview window's own
+    dialog comes first, then PowerShell or osascript. The caller falls back to the
+    browser upload, which only sees a copy of the file.
+    """
+    platform = "linux" if sys.platform.startswith("linux") else sys.platform
+    found = _dialog_command(platform, title, patterns)
+    if _webview_window is not None and (platform != "linux" or found is None):
+        try:
+            return _webview_dialog(patterns)
+        except Exception as exc:
+            logging.getLogger(__name__).info("pywebview file dialog unavailable: %s", exc)
+    if found is None:
+        return None
+    command, extra_env = found
+    try:
+        completed = subprocess.run(
+            command, check=False, capture_output=True, text=True, encoding="utf-8",
+            env={**external_program_env(), **extra_env},
+            # Without it a windowed build flashes a console behind the dialog.
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if platform == "win32" else 0,
+        )
+    except OSError as exc:
+        logging.getLogger(__name__).info("File dialog %s failed: %s", command[0], exc)
+        return None
+    chosen = completed.stdout.strip()
+    return chosen if completed.returncode == 0 and chosen else None
 
 
 def create_http_server(
@@ -940,6 +1012,8 @@ def launch_desktop_window(
                 text_select=True,
             )
             window.events.closed += on_close
+            global _webview_window
+            _webview_window = window
             # The Linux package bundles Qt only; probing GTK first would just log an ImportError.
             gui = "qt" if linux and getattr(sys, "frozen", False) else None
             # Windows and macOS take the icon from the .exe/.app; WinForms rejects a PNG here.
