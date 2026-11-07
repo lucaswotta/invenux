@@ -38,8 +38,8 @@ from paths import (
     get_user_data_dir,
     save_user_config,
 )
-from reporting import create_template_workbook, save_report, save_snapshot_diff, template_filename
-from snapshots import SnapshotStore, compute_fleet_analytics
+from reporting import create_template_workbook, save_change_report, save_report, save_snapshot_diff, template_filename
+from snapshots import SnapshotStore, compute_fleet_analytics, compute_hardware_changes
 import updates as release_updates
 
 APP_BRAND = "Invenux"
@@ -118,6 +118,7 @@ class InventoryController:
         self.targets_info: dict[str, Any] = {}
         self.update_info: dict[str, Any] = {"state": "idle"}
         self.active_engine: InventoryEngine | None = None
+        self.last_snapshot_id: int | None = None
         self._bootstrap_initial_records()
         self.revision = 0
         self.reset_revision = 0
@@ -475,6 +476,17 @@ class InventoryController:
             self.status_text = t("app_viewing_snapshot", created_at=snap["created_at"])
         return self.get_state()
 
+    def write_change_report(self, path: str | Path) -> Path:
+        """Hardware changes of the last collection against the snapshot before it."""
+        changes: list[dict[str, str]] = []
+        if self.last_snapshot_id is not None:
+            diff = self.snapshot_store.compute_diff(self.last_snapshot_id)
+            if diff["base_snapshot"] is not None:
+                base = self.snapshot_store.get_snapshot(diff["base_snapshot"]["id"]) or {}
+                current = self.snapshot_store.get_snapshot(self.last_snapshot_id) or {}
+                changes = compute_hardware_changes(base.get("records", []), current.get("records", []))
+        return save_change_report(changes, Path(path).expanduser(), get_language())
+
     def start_scan(self) -> dict[str, Any]:
         with self.lock:
             if self.scanning:
@@ -570,7 +582,7 @@ class InventoryController:
 
         if final_records:
             try:
-                self.snapshot_store.save_snapshot(
+                saved = self.snapshot_store.save_snapshot(
                     all_records,
                     source_name=source_name,
                     duration_seconds=elapsed,
@@ -579,6 +591,7 @@ class InventoryController:
                     int(self.config.get("snapshot_keep_last", 0)), int(self.config.get("snapshot_keep_days", 0))
                 )
                 with self.lock:
+                    self.last_snapshot_id = saved["id"]
                     self.snapshots = self.snapshot_store.list_snapshots(limit=50)
             except Exception:
                 logging.getLogger(__name__).warning("Failed to save local snapshot", exc_info=True)
@@ -982,6 +995,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--ssh-port", type=int, default=22, help="SSH port of the machines (default: 22).")
     parser.add_argument("--output-format", type=str, default="XLSX", choices=["XLSX", "CSV", "HTML"])
+    parser.add_argument(
+        "--report-changes",
+        type=str,
+        metavar="FILE",
+        help="Write the hardware changes against the previous snapshot to this CSV; "
+        "the file is empty when nothing changed.",
+    )
     args = parser.parse_args(argv)
 
     setup_logging()
@@ -1005,6 +1025,8 @@ def main(argv: list[str] | None = None) -> int:
             while controller.get_state()["scanning"]:
                 time.sleep(0.2)
             report = controller.export_current(args.output_format)
+            if args.report_changes:
+                controller.write_change_report(args.report_changes)
         except ValueError as exc:
             print(exc, file=sys.stderr)
             return 2

@@ -151,6 +151,41 @@ python3 app.py --input machines.xlsx --user inventory --key ~/.ssh/id_ed25519 --
 python3 app.py --input machines.xlsx --user inventory --ask-password
 ```
 
+### Scheduled collections
+
+`--report-changes FILE` makes a command-line run also write the hardware changes (processor, memory, storage, motherboard) against the previous snapshot, for machines that were online in both runs. Status, system and kernel changes are left out, and the file is empty (0 bytes) when nothing changed, so a scheduler can act only when it has content. Every run saves a snapshot that shows up in the Snapshots view. Use a key, since there is nobody to type a password; the examples use the Linux install (`~/.local/bin/invenux`), and `python3 /path/to/invenux/app.py` works the same from source.
+
+cron (every Monday at 07:00, mail the changes when there are any):
+
+```sh
+0 7 * * 1 $HOME/.local/bin/invenux --input $HOME/inventory/machines.xlsx --user inventory --key $HOME/.ssh/id_ed25519 --report-changes $HOME/inventory/changes.csv && [ -s $HOME/inventory/changes.csv ] && mail -s "Hardware changes" admin@example.com < $HOME/inventory/changes.csv
+```
+
+systemd timer (`~/.config/systemd/user/invenux.service` and `invenux.timer`, then `systemctl --user enable --now invenux.timer`):
+
+```ini
+# invenux.service
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/invenux --input %h/inventory/machines.xlsx --user inventory --key %h/.ssh/id_ed25519 --report-changes %h/inventory/changes.csv
+
+# invenux.timer
+[Timer]
+OnCalendar=Mon 07:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Windows Task Scheduler (PowerShell, every Monday at 07:00):
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "C:\Tools\invenux.exe" -Argument '--input C:\Inventory\machines.xlsx --user inventory --key C:\Users\me\.ssh\id_ed25519 --report-changes C:\Inventory\changes.csv'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 7am
+Register-ScheduledTask -TaskName "Invenux inventory" -Action $action -Trigger $trigger
+```
+
 ## The spreadsheet
 
 `.xlsx`, `.xlsm` or `.csv` (comma or semicolon). The first row is the header and every following row is a machine.
