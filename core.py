@@ -32,6 +32,8 @@ class Terminal:
     distro: str = "N/A"
     kernel: str = "N/A"
     erro: str = ""
+    # Row value from the spreadsheet until collection, then the port actually used.
+    ssh_port: Optional[int] = None
     dta_atualizacao: Optional[datetime] = None
     hardware_details: Dict[str, Any] = field(default_factory=dict)
 
@@ -40,10 +42,26 @@ _ENDPOINT_ALIASES = ("IP", "HOST", "HOSTNAME", "ADDRESS", "IP_ADDRESS", "ENDPOIN
 # Per-machine SSH access; these cells override the SSH panel and never reach records.
 _USER_ALIASES = ("USER", "USERNAME", "SSH_USER", "LOGIN", "USUARIO", "USUÁRIO")
 _PASSWORD_ALIASES = ("PASSWORD", "PASS", "SSH_PASSWORD", "SENHA", "CONTRASENA", "CONTRASEÑA")
+_PORT_ALIASES = ("SSH_PORT", "PORT", "PORTA", "PUERTO")
 
 
 def _normalize_column_name(value: Any) -> str:
     return str(value).strip().upper().replace(" ", "_").replace("-", "_")
+
+
+def _parse_port(value: Any) -> Optional[int]:
+    """A TCP port from a cell (Excel stores 2222 as 2222.0); None when it is not one."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float):
+        if not value.is_integer():
+            return None
+        value = int(value)
+    text = str(value).strip()
+    if not text.isdigit():
+        return None
+    port = int(text)
+    return port if 1 <= port <= 65535 else None
 
 
 def _cell_value(value: Any) -> Any:
@@ -207,6 +225,8 @@ class InventoryEngine:
         endpoint_index = columns.index(endpoint_column)
         user_column = next((name for name in _USER_ALIASES if name in columns), None)
         password_column = next((name for name in _PASSWORD_ALIASES if name in columns), None)
+        port_column = next((name for name in _PORT_ALIASES if name in columns), None)
+        port_index = columns.index(port_column) if port_column is not None else None
         credential_indexes = {
             columns.index(name): key
             for name, key in ((user_column, "user"), (password_column, "password"))
@@ -218,6 +238,7 @@ class InventoryEngine:
         seen: set[str] = set()
         rows_without_target: List[int] = []
         duplicate_rows: List[int] = []
+        invalid_port_rows: List[int] = []
         for row_number, source_values in enumerate(rows, start=2):
             values = list(source_values)
             # Spreadsheet rows may be shorter than their header; pad missing cells.
@@ -235,6 +256,15 @@ class InventoryEngine:
             if not endpoint or endpoint.casefold() in {"nan", "none"}:
                 rows_without_target.append(row_number)
                 continue
+            port = None
+            if port_index is not None:
+                cell = _cell_value(values[port_index])
+                if cell is not None and str(cell).strip():
+                    port = _parse_port(cell)
+                    # Connecting on a guessed port would report a misleading failure.
+                    if port is None:
+                        invalid_port_rows.append(row_number)
+                        continue
             # Results are matched by address; a repeated one would never leave PENDING.
             if endpoint in seen:
                 duplicate_rows.append(row_number)
@@ -244,7 +274,7 @@ class InventoryEngine:
             metadata: Dict[str, Any] = {}
             access: Dict[str, str] = {}
             for index, column in enumerate(columns):
-                if index == endpoint_index:
+                if index in (endpoint_index, port_index):
                     continue
                 value = _cell_value(values[index])
                 if value is None or not str(value).strip():
@@ -255,7 +285,7 @@ class InventoryEngine:
                     access[key] = str(value) if key == "password" else str(value).strip()
                 else:
                     metadata[column] = value
-            terminals.append(Terminal(ip=endpoint, metadata=metadata))
+            terminals.append(Terminal(ip=endpoint, metadata=metadata, ssh_port=port))
             if access:
                 credentials[endpoint] = access
 
@@ -264,13 +294,17 @@ class InventoryEngine:
         self.load_summary = {
             "target_column": endpoint_column,
             "extra_columns": [
-                name for name in columns if name != endpoint_column and name not in credential_columns
+                name for name in columns
+                if name not in (endpoint_column, port_column) and name not in credential_columns
             ],
             "credential_columns": credential_columns,
             "hosts_with_user": sum(1 for access in credentials.values() if "user" in access),
             "hosts_with_password": sum(1 for access in credentials.values() if "password" in access),
             "rows_without_target": rows_without_target,
             "duplicate_rows": duplicate_rows,
+            "port_column": port_column,
+            "hosts_with_port": sum(1 for terminal in terminals if terminal.ssh_port is not None),
+            "invalid_port_rows": invalid_port_rows,
         }
         return terminals
 
@@ -386,13 +420,14 @@ class InventoryEngine:
             return terminal
 
         access = self.credentials.get(terminal.ip, {})
+        terminal.ssh_port = terminal.ssh_port or int(self.config.get("ssh_port", 22))
         hw_info = get_hardware_info(
             ip=terminal.ip,
             username=access.get("user") or self.config.get("ssh_user", ""),
             password=access.get("password") or self.config.get("ssh_pass"),
             key_path=self.config.get("ssh_key_path"),
             timeout=timeout,
-            port=int(self.config.get("ssh_port", 22)),
+            port=terminal.ssh_port,
             trust_unknown_hosts=bool(self.config.get("trust_unknown_hosts", False)),
             include_sensitive_identifiers=bool(self.config.get("include_sensitive_identifiers", False)),
             use_agent=bool(self.config.get("ssh_use_agent", False)),

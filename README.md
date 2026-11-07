@@ -197,6 +197,7 @@ Register-ScheduledTask -TaskName "Invenux inventory" -Action $action -Trigger $t
 | `LOCATION` | No | Site or room; groups the fleet view and the reports. `SITE`, `LOCAL`, `UNIDADE`, `FILIAL`, `SETOR`, `UBICACION`, `SEDE` and `SUCURSAL` also work. |
 | `USER` | No | SSH user for that machine when it differs from the SSH panel. `USERNAME`, `SSH_USER`, `LOGIN` and `USUARIO` also work. |
 | `PASSWORD` | No | SSH password for that machine, for fleets where passwords differ; normally the password goes in the SSH panel. `PASS`, `SENHA` and `CONTRASENA` also work. Empty cells use the panel. Invenux keeps it in memory only and never writes it to the table, reports, snapshots or logs, but the file holds it as plain text. |
+| `SSH_PORT` | No | SSH port for that machine when it is not the panel port. `PORT`, `PORTA` and `PUERTO` also work. Empty cells use the panel; rows with an invalid port (outside 1 to 65535) are skipped and listed after loading. The port used is shown in the details and exported in the reports. |
 | Any other | No | Copied as is to the table and every report, for example `ASSET_TAG`, `OWNER` or `NOTES`. |
 
 Rows without an address and repeated addresses are skipped and listed after loading. The template (**Get the template**) comes with two example rows and a sheet explaining each column, in the interface language.
@@ -256,14 +257,14 @@ Not yet: Windows gets one `.exe`, macOS an app bundle and Linux a folder with `i
 No. The targets must be Linux with SSH. The program itself runs on Linux, Windows and macOS.
 
 **Which port does it use?**
-22 by default. Change it in the SSH panel, or with `--ssh-port` on the command line; every machine in a collection uses the same port.
+22 by default. Change it in the SSH panel, or with `--ssh-port` on the command line. Machines on another port get an `SSH_PORT` column in the spreadsheet; empty cells use the panel port.
 
 **Can I run it without the interface?**
 Yes, see the command line above. It needs a private key.
 
 ## Limitations
 
-- Targets must be Linux with SSH, and all machines in a collection share one SSH port.
+- Targets must be Linux with SSH.
 - Memory slot details need root or passwordless sudo for `dmidecode` on the target.
 - Storage type identifies virtual disks by model/vendor/name or a detected hypervisor. Hypervisor detection also classifies passthrough disks as Virtual. Other disks use NVMe transport/name and the kernel's rotational flag; non-rotating media includes USB flash.
 - The command line accepts a private key only, not a password.

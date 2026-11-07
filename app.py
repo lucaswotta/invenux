@@ -402,6 +402,8 @@ class InventoryController:
             notes.append(t("app_rows_without_target", rows=_row_list(summary["rows_without_target"])))
         if summary["duplicate_rows"]:
             notes.append(t("app_duplicate_rows", rows=_row_list(summary["duplicate_rows"])))
+        if summary["invalid_port_rows"]:
+            notes.append(t("app_invalid_port_rows", rows=_row_list(summary["invalid_port_rows"])))
         if summary["credential_columns"]:
             notes.append(t(
                 "app_sheet_credentials",

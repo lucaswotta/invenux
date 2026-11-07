@@ -197,6 +197,7 @@ Register-ScheduledTask -TaskName "Inventario Invenux" -Action $action -Trigger $
 | `LOCATION` | Não | Unidade ou sala; agrupa o Parque e os relatórios. Também vale `LOCAL`, `UNIDADE`, `FILIAL`, `SETOR`, `SITE`, `UBICACION`, `SEDE` ou `SUCURSAL`. |
 | `USER` | Não | Usuário SSH daquela máquina, quando difere do painel SSH. Também vale `USERNAME`, `SSH_USER`, `LOGIN` ou `USUARIO`. |
 | `PASSWORD` | Não | Senha SSH daquela máquina, para parques com senhas diferentes; o normal é deixar a senha no painel SSH. Também vale `PASS`, `SENHA` ou `CONTRASENA`. Células vazias usam o painel. O Invenux a mantém só na memória e nunca a grava na tabela, relatórios, snapshots ou logs, mas o arquivo a guarda em texto puro. |
+| `SSH_PORT` | Não | Porta SSH daquela máquina, quando não é a do painel. Também vale `PORT`, `PORTA` ou `PUERTO`. Células vazias usam o painel; linhas com porta inválida (fora de 1 a 65535) são ignoradas e listadas depois de carregar. A porta usada aparece nos detalhes e vai para os relatórios. |
 | Qualquer outra | Não | Copiada como está para a tabela e para todos os relatórios, por exemplo `ASSET_TAG`, `OWNER` ou `NOTES`. |
 
 Linhas sem IP e IPs repetidos são ignorados e listados depois de carregar. A planilha modelo (**Baixar planilha modelo**) vem com duas linhas de exemplo e uma aba explicando cada coluna, no idioma da interface.
@@ -256,14 +257,14 @@ Ainda não: o Windows recebe um `.exe`, o macOS um app e o Linux uma pasta com `
 Não. Os alvos precisam ser Linux com SSH. O programa em si roda em Linux, Windows e macOS.
 
 **Qual porta ele usa?**
-A 22 por padrão. Troque no painel SSH ou com `--ssh-port` na linha de comando; todas as máquinas de uma coleta usam a mesma porta.
+A 22 por padrão. Troque no painel SSH ou com `--ssh-port` na linha de comando. Máquinas em outra porta ganham uma coluna `SSH_PORT` na planilha; células vazias usam a porta do painel.
 
 **Dá para rodar sem a interface?**
 Sim, veja a linha de comando acima. Ela exige chave privada.
 
 ## Limitações
 
-- Os alvos precisam ser Linux com SSH, e todas as máquinas de uma coleta usam a mesma porta SSH.
+- Os alvos precisam ser Linux com SSH.
 - Os detalhes dos slots de memória exigem root ou sudo sem senha para o `dmidecode` no alvo.
 - O tipo de armazenamento identifica discos virtuais pelo modelo/fabricante/nome ou por hipervisor detectado. A detecção de hipervisor também classifica discos repassados à VM como Virtual. Os demais discos usam nome/transporte NVMe e a flag de rotação do kernel; mídia não rotativa inclui flash USB.
 - A linha de comando aceita só chave privada, não senha.
