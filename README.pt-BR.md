@@ -229,7 +229,7 @@ Sim, veja a linha de comando acima. Ela exige chave privada.
 
 - Os alvos precisam ser Linux com SSH, e todas as máquinas de uma coleta usam a mesma porta SSH.
 - Os detalhes dos slots de memória exigem root no alvo.
-- O tipo de armazenamento usa o nome do barramento e a flag de rotação do kernel, então discos virtuais podem aparecer como SSD.
+- O tipo de armazenamento identifica discos virtuais pelo modelo/fabricante/nome ou por hipervisor detectado. A detecção de hipervisor também classifica discos repassados à VM como Virtual. Os demais discos usam nome/transporte NVMe e a flag de rotação do kernel; mídia não rotativa inclui flash USB.
 - A linha de comando aceita só chave privada, não senha.
 
 ## Próximos passos

@@ -86,6 +86,8 @@ def _classify_storage(disk_type: str) -> str:
     upper = _clean(disk_type).upper()
     if not upper:
         return "Unknown"
+    if "VIRTUAL" in upper:
+        return "Virtual"
     if "NVME" in upper:
         return "NVMe"
     if "SSD" in upper or "FLASH" in upper:
@@ -144,6 +146,7 @@ def compute_fleet_analytics(records: Sequence[Mapping[str, Any]]) -> dict[str, A
     nvme_count = 0
     ssd_count = 0
     hdd_count = 0
+    virtual_count = 0
     ram_values: list[float] = []
     ram_le_4 = 0
     ram_8 = 0
@@ -159,6 +162,7 @@ def compute_fleet_analytics(records: Sequence[Mapping[str, Any]]) -> dict[str, A
             "online": 0,
             "flash": 0,
             "hdd": 0,
+            "virtual": 0,
             "ram_le_4": 0,
             "ram_8_plus": 0,
         })
@@ -169,7 +173,10 @@ def compute_fleet_analytics(records: Sequence[Mapping[str, Any]]) -> dict[str, A
 
         bucket["online"] += 1
         storage_kind = _classify_storage(str(rec.get("disk_type", "")))
-        if storage_kind == "NVMe":
+        if storage_kind == "Virtual":
+            virtual_count += 1
+            bucket["virtual"] += 1
+        elif storage_kind == "NVMe":
             nvme_count += 1
             bucket["flash"] += 1
         elif storage_kind == "SSD":
@@ -195,7 +202,7 @@ def compute_fleet_analytics(records: Sequence[Mapping[str, Any]]) -> dict[str, A
         distro = _clean(rec.get("distro")) or "Não identificado"
         distro_counts[distro] = distro_counts.get(distro, 0) + 1
 
-    storage_total = nvme_count + ssd_count + hdd_count
+    storage_total = nvme_count + ssd_count + hdd_count + virtual_count
     flash_pct = round(((nvme_count + ssd_count) / storage_total) * 100, 1) if storage_total else 0.0
     avg_ram_gb = round(sum(ram_values) / len(ram_values), 1) if ram_values else 0.0
 
@@ -225,8 +232,10 @@ def compute_fleet_analytics(records: Sequence[Mapping[str, Any]]) -> dict[str, A
         "nvme_count": nvme_count,
         "ssd_count": ssd_count,
         "hdd_count": hdd_count,
+        "virtual_count": virtual_count,
         "avg_ram_gb": avg_ram_gb,
         "storage_distribution": [
+            {"label": "Virtual", "count": virtual_count, "percent": _pct(virtual_count, storage_total), "tone": "green"},
             {"label": "NVMe", "count": nvme_count, "percent": _pct(nvme_count, storage_total), "tone": "blue"},
             {"label": "SSD SATA / Flash", "count": ssd_count, "percent": _pct(ssd_count, storage_total), "tone": "teal"},
             {"label": "HDD Mecânico", "count": hdd_count, "percent": _pct(hdd_count, storage_total), "tone": "purple"},

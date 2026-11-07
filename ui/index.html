@@ -2563,6 +2563,7 @@
   "db.col_total": "Total",
   "db.col_online": "Online",
   "db.no_locations": "Nenhuma unidade para exibir.",
+  "an.Virtual": "Virtual",
   "an.SSD SATA / Flash": "SSD SATA / Flash",
   "an.HDD Mecânico": "HDD mecânico",
   "an.Até 4 GB": "Até 4 GB",
@@ -2828,6 +2829,7 @@
   "db.col_total": "Total",
   "db.col_online": "Online",
   "db.no_locations": "No location to show.",
+  "an.Virtual": "Virtual",
   "an.SSD SATA / Flash": "SATA SSD / flash",
   "an.HDD Mecânico": "Hard disk",
   "an.Até 4 GB": "Up to 4 GB",
@@ -3093,6 +3095,7 @@
   "db.col_total": "Total",
   "db.col_online": "En línea",
   "db.no_locations": "No hay ubicaciones para mostrar.",
+  "an.Virtual": "Virtual",
   "an.SSD SATA / Flash": "SSD SATA / flash",
   "an.HDD Mecânico": "Disco duro",
   "an.Até 4 GB": "Hasta 4 GB",
@@ -3887,7 +3890,7 @@
     document.getElementById("stat-online").textContent = a.online;
     document.getElementById("stat-avail").textContent = tr("db.avail", { p: fmt(a.availability_pct) });
     document.getElementById("stat-flash").textContent = `${fmt(a.flash_pct)}%`;
-    document.getElementById("stat-flash-note").textContent = `${a.nvme_count} NVMe · ${a.ssd_count} SSD · ${a.hdd_count} HDD`;
+    document.getElementById("stat-flash-note").textContent = `${a.nvme_count} NVMe · ${a.ssd_count} SSD · ${a.hdd_count} HDD · ${a.virtual_count} ${tr("an.Virtual")}`;
     document.getElementById("stat-ram").textContent = `${fmt(a.avg_ram_gb)} GB`;
 
     renderDistList("dist-storage", a.storage_distribution);

@@ -229,7 +229,7 @@ Yes, see the command line above. It needs a private key.
 
 - Targets must be Linux with SSH, and all machines in a collection share one SSH port.
 - Memory slot details need root on the target.
-- Storage type uses the transport name and the kernel's rotational flag, so virtual disks can appear as SSD.
+- Storage type identifies virtual disks by model/vendor/name or a detected hypervisor. Hypervisor detection also classifies passthrough disks as Virtual. Other disks use NVMe transport/name and the kernel's rotational flag; non-rotating media includes USB flash.
 - The command line accepts a private key only, not a password.
 
 ## Roadmap

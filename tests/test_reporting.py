@@ -45,6 +45,23 @@ SAMPLE = {
 
 
 class ReportingTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("openpyxl"), "openpyxl is not installed")
+    def test_xlsx_overview_separates_virtual_storage_from_flash(self):
+        from openpyxl import load_workbook
+
+        records = [dict(SAMPLE, disk_type=kind) for kind in ("Virtual", "NVMe", "SSD / flash", "HDD")]
+        with tempfile.TemporaryDirectory() as directory:
+            path = save_report(records, "XLSX", directory)
+            workbook = load_workbook(path, data_only=True)
+            try:
+                rows = {row[1]: row[3:5] for row in workbook["Overview"].values if row[1]}
+                self.assertEqual(rows["Virtual"], (1, 0.25))
+                self.assertEqual(rows["NVMe"], (1, 0.25))
+                self.assertEqual(rows["SATA SSD / flash"], (1, 0.25))
+                self.assertEqual(rows["Hard disk"], (1, 0.25))
+            finally:
+                workbook.close()
+
     def test_html_is_self_contained_searchable_and_escapes_untrusted_values(self):
         with tempfile.TemporaryDirectory() as directory:
             path = save_report([SAMPLE], "HTML", directory)
