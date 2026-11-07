@@ -1041,6 +1041,146 @@ def _remember_host_key(known_hosts: Path, hostname: str, key: paramiko.PKey) -> 
             pass
 
 
+def _new_client(known_hosts: Path, trust_unknown_hosts: bool) -> paramiko.SSHClient:
+    """A client that checks host keys against the system file and Invenux's own."""
+    client = paramiko.SSHClient()
+    client.load_system_host_keys()
+    with _KNOWN_HOSTS_LOCK:
+        if known_hosts.is_file():
+            try:
+                # load_host_keys() would make AutoAddPolicy save this stale
+                # copy itself, outside the lock; _remember_host_key() merges.
+                client.get_host_keys().load(str(known_hosts))
+            except OSError:
+                pass
+    client.set_missing_host_key_policy(
+        paramiko.AutoAddPolicy() if trust_unknown_hosts else paramiko.RejectPolicy()
+    )
+    return client
+
+
+def _load_private_key(key_path: Optional[str]) -> Optional[paramiko.PKey]:
+    if not key_path:
+        return None
+    private_key = Path(key_path).expanduser()
+    if not private_key.is_file():
+        raise FileNotFoundError(str(private_key))
+    try:
+        return paramiko.PKey.from_path(private_key)
+    except (AttributeError, NotImplementedError):
+        key_errors = []
+        for key_class in (
+            getattr(paramiko, "Ed25519Key", None),
+            getattr(paramiko, "ECDSAKey", None),
+            getattr(paramiko, "RSAKey", None),
+            getattr(paramiko, "DSSKey", None),
+        ):
+            if key_class is None:
+                continue
+            try:
+                return key_class.from_private_key_file(str(private_key))
+            except (paramiko.SSHException, ValueError, TypeError) as exc:
+                key_errors.append(exc)
+        if key_errors:
+            raise paramiko.SSHException("Unsupported or unreadable private key") from key_errors[-1]
+    return None
+
+
+def _known_host_name(ip: str, port: int) -> str:
+    # known_hosts names a non-default port as [host]:port, as OpenSSH and paramiko do.
+    return ip if port == 22 else f"[{ip}]:{port}"
+
+
+class JumpHostError(Exception):
+    """The bastion itself failed; the message is ready for the machine's row."""
+
+
+class JumpHost:
+    """One bastion connection shared by every worker of a collection.
+
+    Each target is reached through a direct-tcpip channel of this transport,
+    so a fleet behind the bastion costs one login on it instead of one per
+    machine. A failed login is remembered: retrying it per machine would only
+    repeat the same error and could lock the account.
+    """
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        username: str,
+        password: Optional[str],
+        key_path: Optional[str],
+        use_agent: bool = False,
+        timeout: int = 30,
+        trust_unknown_hosts: bool = False,
+    ) -> None:
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.key_path = key_path
+        self.use_agent = use_agent
+        self.timeout = timeout
+        self.trust_unknown_hosts = trust_unknown_hosts
+        self._client: Optional[paramiko.SSHClient] = None
+        self._failure: Optional[str] = None
+        self._lock = threading.Lock()
+
+    def _connect(self) -> paramiko.SSHClient:
+        known_hosts = get_known_hosts_path()
+        client = _new_client(known_hosts, self.trust_unknown_hosts)
+        try:
+            client.connect(
+                hostname=self.host,
+                port=self.port,
+                username=self.username,
+                password=self.password or None,
+                pkey=_load_private_key(self.key_path),
+                timeout=self.timeout,
+                banner_timeout=self.timeout,
+                auth_timeout=self.timeout,
+                allow_agent=self.use_agent,
+                look_for_keys=False,
+            )
+        except paramiko.AuthenticationException:
+            reason = t("hw_auth_failed")
+        except FileNotFoundError:
+            reason = t("hw_key_not_found", key_path=self.key_path)
+        except paramiko.ssh_exception.BadHostKeyException:
+            reason = t("hw_host_key_mismatch", ip=self.host)
+        except (paramiko.SSHException, OSError, EOFError, ValueError) as exc:
+            reason = _connection_failure(exc, self.host, self.timeout, self.port) or str(exc)
+        else:
+            if self.trust_unknown_hosts:
+                _remember_host_key(
+                    known_hosts, _known_host_name(self.host, self.port), client.get_transport().get_remote_server_key()
+                )
+            return client
+        client.close()
+        self._failure = t("hw_jump_failed", host=self.host, reason=reason)
+        raise JumpHostError(self._failure)
+
+    def open_channel(self, ip: str, port: int, timeout: int) -> paramiko.Channel:
+        with self._lock:
+            if self._failure:
+                raise JumpHostError(self._failure)
+            transport = self._client.get_transport() if self._client else None
+            if transport is None or not transport.is_active():
+                self._client = self._connect()
+                transport = self._client.get_transport()
+        try:
+            return transport.open_channel("direct-tcpip", (ip, port), ("127.0.0.1", 0), timeout=timeout)
+        except (paramiko.SSHException, OSError, EOFError) as exc:
+            raise JumpHostError(t("hw_jump_unreachable", host=self.host, ip=ip, port=port)) from exc
+
+    def close(self) -> None:
+        with self._lock:
+            if self._client is not None:
+                self._client.close()
+                self._client = None
+
+
 def get_hardware_info(
     ip: str,
     username: str,
@@ -1050,49 +1190,20 @@ def get_hardware_info(
     trust_unknown_hosts: bool = False,
     include_sensitive_identifiers: bool = False,
     port: int = 22,
+    use_agent: bool = False,
+    jump: Optional[JumpHost] = None,
 ) -> dict[str, Any]:
     """Connect to one explicitly supplied host and discover Linux hardware read-only."""
-    client = paramiko.SSHClient()
     known_hosts = get_known_hosts_path()
+    client = _new_client(known_hosts, trust_unknown_hosts)
     try:
-        client.load_system_host_keys()
-        with _KNOWN_HOSTS_LOCK:
-            if known_hosts.is_file():
-                try:
-                    # load_host_keys() would make AutoAddPolicy save this stale
-                    # copy itself, outside the lock; _remember_host_key() merges.
-                    client.get_host_keys().load(str(known_hosts))
-                except OSError:
-                    pass
-        client.set_missing_host_key_policy(
-            paramiko.AutoAddPolicy() if trust_unknown_hosts else paramiko.RejectPolicy()
-        )
-
-        pkey = None
-        if key_path:
-            private_key = Path(key_path).expanduser()
-            if not private_key.is_file():
-                raise FileNotFoundError(str(private_key))
+        pkey = _load_private_key(key_path)
+        sock = None
+        if jump is not None:
             try:
-                pkey = paramiko.PKey.from_path(private_key)
-            except (AttributeError, NotImplementedError):
-                key_errors = []
-                for key_class in (
-                    getattr(paramiko, "Ed25519Key", None),
-                    getattr(paramiko, "ECDSAKey", None),
-                    getattr(paramiko, "RSAKey", None),
-                    getattr(paramiko, "DSSKey", None),
-                ):
-                    if key_class is None:
-                        continue
-                    try:
-                        pkey = key_class.from_private_key_file(str(private_key))
-                        break
-                    except (paramiko.SSHException, ValueError, TypeError) as exc:
-                        key_errors.append(exc)
-                if pkey is None and key_errors:
-                    raise paramiko.SSHException("Unsupported or unreadable private key") from key_errors[-1]
-
+                sock = jump.open_channel(ip, port, timeout)
+            except JumpHostError as exc:
+                return {"status": "FALHA_CONEXAO", "erro": str(exc)}
         client.connect(
             hostname=ip,
             port=port,
@@ -1102,13 +1213,12 @@ def get_hardware_info(
             timeout=timeout,
             banner_timeout=timeout,
             auth_timeout=timeout,
-            allow_agent=False,
+            allow_agent=use_agent,
             look_for_keys=False,
+            sock=sock,
         )
         if trust_unknown_hosts:
-            # known_hosts names a non-default port as [host]:port, as OpenSSH and paramiko do.
-            host_name = ip if port == 22 else f"[{ip}]:{port}"
-            _remember_host_key(known_hosts, host_name, client.get_transport().get_remote_server_key())
+            _remember_host_key(known_hosts, _known_host_name(ip, port), client.get_transport().get_remote_server_key())
         return _collect_linux_hardware(
             client,
             include_sensitive_identifiers=include_sensitive_identifiers,

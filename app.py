@@ -135,6 +135,10 @@ class InventoryController:
             "max_workers": 32,
             "ssh_timeout": 15,
             "ssh_port": 22,
+            "ssh_use_agent": False,
+            "jump_host": "",
+            "jump_port": 22,
+            "jump_user": "",
             "trust_unknown_hosts": True,
             "include_sensitive_identifiers": False,
             "output_format": "XLSX",
@@ -154,6 +158,10 @@ class InventoryController:
                     defaults["max_workers"] = max(1, min(int(saved.get("max_workers", 32)), 128))
                     defaults["ssh_timeout"] = max(2, min(int(saved.get("ssh_timeout", 15)), 120))
                     defaults["ssh_port"] = _valid_port(saved.get("ssh_port", 22))
+                    defaults["ssh_use_agent"] = bool(saved.get("ssh_use_agent", False))
+                    defaults["jump_host"] = str(saved.get("jump_host") or "")
+                    defaults["jump_port"] = _valid_port(saved.get("jump_port", 22))
+                    defaults["jump_user"] = str(saved.get("jump_user") or "")
                     defaults["trust_unknown_hosts"] = bool(saved.get("trust_unknown_hosts", True))
                     defaults["include_sensitive_identifiers"] = bool(saved.get("include_sensitive_identifiers", False))
                     defaults["output_format"] = str(saved.get("report_format") or saved.get("output_format") or "XLSX").upper()
@@ -177,6 +185,10 @@ class InventoryController:
             "max_workers": int(self.config.get("max_workers", 32)),
             "ssh_timeout": int(self.config.get("ssh_timeout", 15)),
             "ssh_port": int(self.config.get("ssh_port", 22)),
+            "ssh_use_agent": bool(self.config.get("ssh_use_agent", False)),
+            "jump_host": self.config.get("jump_host", ""),
+            "jump_port": int(self.config.get("jump_port", 22)),
+            "jump_user": self.config.get("jump_user", ""),
             "trust_unknown_hosts": bool(self.config.get("trust_unknown_hosts", True)),
             "include_sensitive_identifiers": bool(self.config.get("include_sensitive_identifiers", False)),
             "report_format": str(self.config.get("output_format", "XLSX")).upper(),
@@ -230,6 +242,14 @@ class InventoryController:
                 self.config["ssh_timeout"] = max(2, min(int(updates["ssh_timeout"]), 120))
             if "ssh_port" in updates:
                 self.config["ssh_port"] = _valid_port(updates["ssh_port"])
+            if "ssh_use_agent" in updates:
+                self.config["ssh_use_agent"] = bool(updates["ssh_use_agent"])
+            if "jump_host" in updates:
+                self.config["jump_host"] = str(updates["jump_host"] or "").strip()
+            if "jump_port" in updates:
+                self.config["jump_port"] = _valid_port(updates["jump_port"])
+            if "jump_user" in updates:
+                self.config["jump_user"] = str(updates["jump_user"] or "").strip()
             if "trust_unknown_hosts" in updates:
                 self.config["trust_unknown_hosts"] = bool(updates["trust_unknown_hosts"])
             if "include_sensitive_identifiers" in updates:
@@ -462,6 +482,7 @@ class InventoryController:
             ssh_user = str(self.config.get("ssh_user", "")).strip()
             ssh_key = str(self.config.get("ssh_key_path", "")).strip()
             ssh_pass = str(self.config.get("ssh_pass", ""))
+            use_agent = bool(self.config.get("ssh_use_agent", False))
             if ssh_key and not Path(ssh_key).expanduser().is_file():
                 raise ValueError(t("app_ssh_key_not_found", path=ssh_key))
 
@@ -475,7 +496,7 @@ class InventoryController:
             terminals = engine._load_from_spreadsheet()
             if not terminals:
                 raise ValueError(t("app_no_valid_targets"))
-            _check_access(terminals, engine.credentials, ssh_user, bool(ssh_key or ssh_pass))
+            _check_access(terminals, engine.credentials, ssh_user, bool(ssh_key or ssh_pass or use_agent))
 
             self.records = [_serialize_record(asdict(term)) for term in terminals]
             self._reset_records()
@@ -938,6 +959,10 @@ def main(argv: list[str] | None = None) -> int:
         "There is no password option: it would show in the process list and shell history.",
     )
     parser.add_argument("--ssh-port", type=int, default=22, help="SSH port of the machines (default: 22).")
+    parser.add_argument("--agent", action="store_true", help="Authenticate with the keys loaded in ssh-agent.")
+    parser.add_argument("--jump-host", type=str, help="Reach the machines through this SSH bastion.")
+    parser.add_argument("--jump-port", type=int, default=22, help="SSH port of the bastion (default: 22).")
+    parser.add_argument("--jump-user", type=str, help="User on the bastion (default: the --user value).")
     parser.add_argument("--output-format", type=str, default="XLSX", choices=["XLSX", "CSV", "HTML"])
     args = parser.parse_args(argv)
 
@@ -957,7 +982,13 @@ def main(argv: list[str] | None = None) -> int:
                 password = getpass.getpass(t("cli_password_prompt", user=args.user or ""))
             if password:
                 controller.update_config({"ssh_pass": password})
-            controller.update_config({"ssh_port": args.ssh_port})
+            controller.update_config({
+                "ssh_port": args.ssh_port,
+                "ssh_use_agent": args.agent,
+                "jump_host": args.jump_host or "",
+                "jump_port": args.jump_port,
+                "jump_user": args.jump_user or "",
+            })
             controller.start_scan()
             while controller.get_state()["scanning"]:
                 time.sleep(0.2)

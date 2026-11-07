@@ -55,7 +55,7 @@ Sin agente y de solo lectura: no se instala ni se escribe nada en los equipos.
 
 | Área | Qué obtiene |
 | --- | --- |
-| **Recopilación** | Hasta 128 conexiones SSH en paralelo en cualquier puerto SSH (22 por defecto), contraseña o clave privada, confianza en el primer acceso para claves de host, cancelación en cualquier momento. |
+| **Recopilación** | Hasta 128 conexiones SSH en paralelo en cualquier puerto SSH (22 por defecto), contraseña, clave privada o las claves de `ssh-agent`, jump host (bastión) opcional, confianza en el primer acceso para claves de host, cancelación en cualquier momento. |
 | **Sistema** | Distribución, versión y nombre en clave, kernel, arquitectura, hostname, entorno gráfico y servidor de vídeo, pantallas, cantidad de paquetes, init, zona horaria, tiempo encendido, uso del disco `/`. |
 | **Hardware** | Fabricante y modelo, placa base, BIOS, procesador con núcleos, hilos y frecuencia, cada ranura de memoria (tamaño, tipo, velocidad, modelo del módulo) y el máximo de la placa, cada disco y partición, vídeo, adaptadores de red con IPv4 y MAC. |
 | **Parque** | Tipos de almacenamiento, capacidad de memoria y distribuciones Linux de los equipos accesibles, y el desglose por ubicación. |
@@ -138,7 +138,7 @@ En Linux, `./install.sh` en la carpeta extraída de la release copia el programa
 ## Cómo usar
 
 1. **Destinos:** elija la hoja de equipos, arrastre el archivo a la ventana o pegue su ruta. ¿Aún no tiene una hoja? Use **Obtener la plantilla**.
-2. **SSH:** indique el usuario, el puerto (22, salvo que sus equipos usen otro) y una contraseña o clave privada. La contraseña solo queda en memoria.
+2. **SSH:** indique el usuario, el puerto (22, salvo que sus equipos usen otro) y una contraseña, una clave privada o **Usar las claves de ssh-agent**. La contraseña solo queda en memoria. Equipos alcanzables solo a través de un bastión: complete **Jump host** (host, puerto y usuario; vacío usa el usuario SSH). Invenux entra en el bastión una vez por recopilación, con la misma contraseña, clave o agente, y abre un canal reenviado por equipo; las claves de host se comprueban en el bastión y en cada equipo.
 3. **Iniciar recopilación:** siga cada equipo en la tabla y haga clic en una fila para ver los detalles.
 4. **Exportar:** Excel, HTML o CSV, guardados en la carpeta `Invenux` dentro de Documentos, con **Abrir** y **Abrir carpeta** a continuación.
 
@@ -149,6 +149,7 @@ El botón `Cómo usar` tiene el tutorial animado, el formato de la hoja, el sign
 ```sh
 python3 app.py --input equipos.xlsx --user inventario --key ~/.ssh/id_ed25519 --ssh-port 22 --output-format XLSX
 python3 app.py --input equipos.xlsx --user inventario --ask-password
+python3 app.py --input equipos.xlsx --user inventario --agent --jump-host bastion.example.com --jump-user admin
 ```
 
 ## La hoja

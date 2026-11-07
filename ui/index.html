@@ -470,6 +470,9 @@
     display: none;
     flex-direction: column;
     gap: 11px;
+    /* The SSH panel is taller than a 520 px window; it scrolls instead of being cut off. */
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
   }
 
   .popover.open {
@@ -2042,6 +2045,25 @@
         <input id="input-tofu" type="checkbox" checked onchange="syncSshSettings()">
         <span data-i18n="sp.tofu">Aceitar novas chaves no primeiro acesso (TOFU)</span>
       </label>
+      <label class="checkbox-row">
+        <input id="input-agent" type="checkbox" onchange="syncSshSettings()">
+        <span data-i18n="sp.agent">Usar as chaves do ssh-agent</span>
+      </label>
+      <div class="popover-divider"></div>
+      <div class="field-row field-row-port">
+        <div class="field-group">
+          <label class="field-label" for="input-jump-host" data-i18n="sp.jump">Jump host (opcional)</label>
+          <input id="input-jump-host" class="field-input" type="text" data-i18n-placeholder="sp.jump_ph" oninput="syncSshSettings()">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="input-jump-port" data-i18n="sp.port">Porta</label>
+          <input id="input-jump-port" class="field-input" type="number" min="1" max="65535" value="22" onchange="syncSshSettings()">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="input-jump-user" data-i18n="sp.jump_user">Usuário no jump host</label>
+        <input id="input-jump-user" class="field-input" type="text" data-i18n-placeholder="sp.jump_user_ph" oninput="syncSshSettings()">
+      </div>
     </div>
 
     <div id="popover-export" class="popover">
@@ -2504,6 +2526,13 @@
   "sp.workers": "Conexões simultâneas",
   "sp.timeout": "Timeout (s)",
   "sp.tofu": "Aceitar novas chaves no primeiro acesso (TOFU)",
+  "sp.agent": "Usar as chaves do ssh-agent",
+  "sp.jump": "Jump host (opcional)",
+  "sp.jump_ph": "Endereço do bastião",
+  "sp.jump_user": "Usuário no jump host",
+  "sp.jump_user_ph": "Em branco: o mesmo usuário SSH",
+  "tb.ssh_agent": "ssh-agent",
+  "tb.ssh_jump": "via {host}",
   "ep.xlsx": "Planilha Excel",
   "ep.html": "Relatório interativo",
   "ep.csv": "Dados tabulares",
@@ -2770,6 +2799,13 @@
   "sp.workers": "Simultaneous connections",
   "sp.timeout": "Timeout (s)",
   "sp.tofu": "Accept new host keys on first connection (TOFU)",
+  "sp.agent": "Use the keys in ssh-agent",
+  "sp.jump": "Jump host (optional)",
+  "sp.jump_ph": "Bastion address",
+  "sp.jump_user": "User on the jump host",
+  "sp.jump_user_ph": "Empty: the same SSH user",
+  "tb.ssh_agent": "ssh-agent",
+  "tb.ssh_jump": "via {host}",
   "ep.xlsx": "Excel spreadsheet",
   "ep.html": "Interactive report",
   "ep.csv": "Tabular data",
@@ -3036,6 +3072,13 @@
   "sp.workers": "Conexiones simultáneas",
   "sp.timeout": "Tiempo límite (s)",
   "sp.tofu": "Aceptar claves nuevas en el primer acceso (TOFU)",
+  "sp.agent": "Usar las claves de ssh-agent",
+  "sp.jump": "Jump host (opcional)",
+  "sp.jump_ph": "Dirección del bastión",
+  "sp.jump_user": "Usuario en el jump host",
+  "sp.jump_user_ph": "Vacío: el mismo usuario SSH",
+  "tb.ssh_agent": "ssh-agent",
+  "tb.ssh_jump": "vía {host}",
   "ep.xlsx": "Hoja de Excel",
   "ep.html": "Informe interactivo",
   "ep.csv": "Datos tabulares",
@@ -3537,7 +3580,8 @@
     const cfg = appState.config || {};
     const user = (document.getElementById("input-ssh-user").value || cfg.ssh_user || "").trim();
     const key = (document.getElementById("input-ssh-key").value || cfg.ssh_key_path || "").trim();
-    const pass = document.getElementById("input-ssh-pass").value || cfg.has_password;
+    const pass = document.getElementById("input-ssh-pass").value || cfg.has_password
+      || document.getElementById("input-agent").checked;
     // USER/PASSWORD columns can cover every machine and leave the panel empty.
     const info = appState.targetsInfo || {};
     const sheetUser = Boolean(info.count) && info.hosts_with_user === info.count;
@@ -3607,10 +3651,14 @@
       authLabel = tr("tb.ssh_key", { name: keyPath.split(/[\\/]/).pop() });
     } else if (hasPass) {
       authLabel = tr("tb.ssh_password");
+    } else if (document.getElementById("input-agent").checked) {
+      authLabel = tr("tb.ssh_agent");
     }
     const port = parseInt(document.getElementById("input-ssh-port").value || cfg.ssh_port || 22, 10);
     const portLabel = port !== 22 ? ` · ${tr("tb.ssh_port", { port })}` : "";
-    document.getElementById("ssh-pill-value").textContent = user ? `${user} · ${authLabel}${portLabel}` : tr("tb.ssh_empty");
+    const jumpHost = document.getElementById("input-jump-host").value.trim();
+    const jumpLabel = jumpHost ? ` · ${tr("tb.ssh_jump", { host: jumpHost })}` : "";
+    document.getElementById("ssh-pill-value").textContent = user ? `${user} · ${authLabel}${portLabel}${jumpLabel}` : tr("tb.ssh_empty");
 
     const workers = parseInt(document.getElementById("input-workers").value || cfg.max_workers || 32, 10);
     const timeout = parseInt(document.getElementById("input-timeout").value || cfg.ssh_timeout || 15, 10);
@@ -3629,7 +3677,11 @@
       max_workers: parseInt(document.getElementById("input-workers").value || "32", 10),
       ssh_timeout: parseInt(document.getElementById("input-timeout").value || "15", 10),
       ssh_port: parseInt(document.getElementById("input-ssh-port").value || "22", 10),
-      trust_unknown_hosts: document.getElementById("input-tofu").checked
+      trust_unknown_hosts: document.getElementById("input-tofu").checked,
+      ssh_use_agent: document.getElementById("input-agent").checked,
+      jump_host: document.getElementById("input-jump-host").value.trim(),
+      jump_port: parseInt(document.getElementById("input-jump-port").value || "22", 10),
+      jump_user: document.getElementById("input-jump-user").value.trim()
     };
     updateToolbarAndFooter();
     try {
@@ -4211,6 +4263,16 @@
       }
       if (typeof data.config.trust_unknown_hosts === "boolean") {
         document.getElementById("input-tofu").checked = data.config.trust_unknown_hosts;
+      }
+      if (typeof data.config.ssh_use_agent === "boolean") {
+        document.getElementById("input-agent").checked = data.config.ssh_use_agent;
+      }
+      for (const [id, key] of [["input-jump-host", "jump_host"], ["input-jump-user", "jump_user"]]) {
+        const input = document.getElementById(id);
+        if (!input.value && data.config[key]) input.value = data.config[key];
+      }
+      if (data.config.jump_port) {
+        document.getElementById("input-jump-port").value = data.config.jump_port;
       }
     }
     if (Array.isArray(data.records)) {

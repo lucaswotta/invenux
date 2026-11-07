@@ -14,7 +14,7 @@ from queue import Queue
 from typing import Any, Dict, List, Optional
 
 from i18n import t
-from inspector import get_hardware_info
+from inspector import JumpHost, get_hardware_info
 
 
 @dataclass
@@ -72,6 +72,7 @@ class InventoryEngine:
         self.credentials: Dict[str, Dict[str, str]] = {}
         self.logger = logging.getLogger(__name__)
         self.cancel_event = threading.Event()
+        self.jump: Optional[JumpHost] = None
 
     def cancel(self) -> None:
         """Request cancellation; active SSH calls finish within their timeouts."""
@@ -287,6 +288,18 @@ class InventoryEngine:
         exhausted = False
         circuit_tripped = False
 
+        jump_host = str(self.config.get("jump_host", "") or "").strip()
+        if jump_host:
+            self.jump = JumpHost(
+                host=jump_host,
+                port=int(self.config.get("jump_port", 22) or 22),
+                username=str(self.config.get("jump_user", "") or "").strip() or self.config.get("ssh_user", ""),
+                password=self.config.get("ssh_pass"),
+                key_path=self.config.get("ssh_key_path"),
+                use_agent=bool(self.config.get("ssh_use_agent", False)),
+                timeout=timeout,
+                trust_unknown_hosts=bool(self.config.get("trust_unknown_hosts", False)),
+            )
         executor = concurrent.futures.ThreadPoolExecutor(
             max_workers=max_workers, thread_name_prefix="hardware-inventory"
         )
@@ -355,6 +368,8 @@ class InventoryEngine:
             for future in pending:
                 future.cancel()
             executor.shutdown(wait=True, cancel_futures=True)
+            if self.jump is not None:
+                self.jump.close()
 
         if circuit_tripped:
             self.log("WARNING", t("log_stopped_early", count=processed))
@@ -380,6 +395,8 @@ class InventoryEngine:
             port=int(self.config.get("ssh_port", 22)),
             trust_unknown_hosts=bool(self.config.get("trust_unknown_hosts", False)),
             include_sensitive_identifiers=bool(self.config.get("include_sensitive_identifiers", False)),
+            use_agent=bool(self.config.get("ssh_use_agent", False)),
+            jump=self.jump,
         )
         raw_status = hw_info.get("status")
         if raw_status in {"SUCESSO", "SUCESSO_PARCIAL"}:

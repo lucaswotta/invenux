@@ -55,7 +55,7 @@ Sem agente e só leitura: nada é instalado ou gravado nas máquinas.
 
 | Área | O que você tem |
 | --- | --- |
-| **Coleta** | Até 128 conexões SSH em paralelo em qualquer porta SSH (22 por padrão), senha ou chave privada, confiança no primeiro acesso para chaves de host, cancelamento a qualquer momento. |
+| **Coleta** | Até 128 conexões SSH em paralelo em qualquer porta SSH (22 por padrão), senha, chave privada ou as chaves do `ssh-agent`, jump host (bastião) opcional, confiança no primeiro acesso para chaves de host, cancelamento a qualquer momento. |
 | **Sistema** | Distribuição, versão e codinome, kernel, arquitetura, hostname, ambiente gráfico e servidor de vídeo, telas, quantidade de pacotes, init, fuso horário, tempo ligado, uso do disco `/`. |
 | **Hardware** | Fabricante e modelo, placa-mãe, BIOS, processador com núcleos, threads e frequência, cada slot de memória (tamanho, tipo, velocidade, modelo do pente) e o máximo da placa, cada disco e partição, vídeo, adaptadores de rede com IPv4 e MAC. |
 | **Parque** | Tipos de armazenamento, capacidade de memória e distribuições Linux das máquinas acessíveis, e a divisão por local. |
@@ -138,7 +138,7 @@ No Linux, `./install.sh` na pasta extraída da release copia o programa para `~/
 ## Como usar
 
 1. **Alvos:** escolha a planilha de máquinas, arraste o arquivo para a janela ou cole o caminho. Ainda não tem planilha? Use **Baixar planilha modelo**.
-2. **SSH:** informe o usuário, a porta (22, a menos que suas máquinas usem outra) e uma senha ou chave privada. A senha fica só na memória.
+2. **SSH:** informe o usuário, a porta (22, a menos que suas máquinas usem outra) e uma senha, uma chave privada ou **Usar as chaves do ssh-agent**. A senha fica só na memória. Máquinas alcançáveis só por um bastião: preencha **Jump host** (host, porta e usuário; usuário em branco usa o usuário SSH). O Invenux entra no bastião uma vez por coleta, com a mesma senha, chave ou agente, e abre um canal encaminhado por máquina; as chaves de host são conferidas no bastião e em cada máquina.
 3. **Iniciar coleta:** acompanhe cada máquina na tabela e clique numa linha para ver os detalhes.
 4. **Exportar:** Excel, HTML ou CSV, salvos na pasta `Invenux` dentro de Documentos, com **Abrir** e **Abrir pasta** logo em seguida.
 
@@ -149,6 +149,7 @@ O botão `Como usar` tem o tutorial animado, o formato da planilha, o significad
 ```sh
 python3 app.py --input maquinas.xlsx --user inventario --key ~/.ssh/id_ed25519 --ssh-port 22 --output-format XLSX
 python3 app.py --input maquinas.xlsx --user inventario --ask-password
+python3 app.py --input maquinas.xlsx --user inventario --agent --jump-host bastion.example.com --jump-user admin
 ```
 
 ## A planilha
