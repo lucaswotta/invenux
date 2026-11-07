@@ -1825,6 +1825,44 @@
     flex-shrink: 0;
   }
 
+  .snapshot-tools {
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--sep-subtle);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .snapshot-tools select {
+    height: 26px;
+    max-width: 100%;
+    border-radius: 6px;
+    border: 1px solid rgba(var(--overlay), 0.12);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font: inherit;
+    padding: 0 6px;
+  }
+
+  .snapshot-confirm {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary);
+  }
+
+  .retention-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 84px;
+    gap: 8px 12px;
+    align-items: center;
+    font-size: 12.5px;
+  }
+
   .table-card-header h3 {
     font-size: 13px;
     font-weight: 600;
@@ -2246,6 +2284,16 @@
               <div style="display:flex; gap:8px;">
                 <button class="btn" onclick="loadSnapshotIntoWorkspace()" data-i18n="hi.load">Carregar na Coleta</button>
                 <button class="btn" onclick="exportSnapshotDiff()" data-i18n="hi.export">Exportar comparação</button>
+                <button id="snapshot-delete" class="btn" onclick="askDeleteSnapshot()" data-i18n="hi.delete">Excluir</button>
+              </div>
+            </div>
+            <div class="snapshot-tools">
+              <label for="snapshot-base" data-i18n="hi.compare">Comparar com</label>
+              <select id="snapshot-base" onchange="changeSnapshotBase(this.value)"></select>
+              <div id="snapshot-delete-confirm" class="snapshot-confirm" role="alertdialog" aria-labelledby="snapshot-delete-text" hidden>
+                <span id="snapshot-delete-text"></span>
+                <button id="snapshot-delete-cancel" class="btn btn-small" onclick="cancelDeleteSnapshot()" data-i18n="hi.cancel">Cancelar</button>
+                <button class="btn btn-small btn-danger" onclick="confirmDeleteSnapshot()" data-i18n="hi.delete">Excluir</button>
               </div>
             </div>
             <div style="overflow-y: auto; flex: 1;">
@@ -2386,6 +2434,16 @@
           <button type="button" data-value="dark" data-i18n="theme.dark">Escuro</button>
         </div>
       </div>
+    </section>
+    <section class="sheet-section">
+      <h4 data-i18n="ab.history">Histórico de snapshots</h4>
+      <div class="retention-grid">
+        <label for="input-keep-last" data-i18n="ab.keep_last">Manter só os últimos (0 = todos)</label>
+        <input id="input-keep-last" class="field-input" type="number" min="0" value="0" onchange="saveRetention()">
+        <label for="input-keep-days" data-i18n="ab.keep_days">Manter só os dos últimos dias (0 = sem limite)</label>
+        <input id="input-keep-days" class="field-input" type="number" min="0" value="0" onchange="saveRetention()">
+      </div>
+      <p data-i18n="ab.retention_note">Aplicado ao fim de cada coleta. O snapshot mais recente nunca é excluído.</p>
     </section>
     <section class="sheet-section">
       <h4 data-i18n="hp.version">Versão e atualizações</h4>
@@ -2586,6 +2644,17 @@
   "hi.card_sub": "{online} online · {changes} alterações",
   "hi.loaded": "Snapshot #{id} carregado na visão Coleta.",
   "hi.saved": "Alterações salvas em {path}",
+  "hi.compare": "Comparar com",
+  "hi.base_previous": "Snapshot anterior",
+  "hi.delete": "Excluir",
+  "hi.cancel": "Cancelar",
+  "hi.delete_confirm": "Excluir o snapshot de {date}? Isso não pode ser desfeito.",
+  "hi.between": "Alterações entre {base} e {date}",
+  "hi.no_changes_between": "Nenhuma alteração de hardware entre os dois snapshots.",
+  "ab.history": "Histórico de snapshots",
+  "ab.keep_last": "Manter só os últimos (0 = todos)",
+  "ab.keep_days": "Manter só os dos últimos dias (0 = sem limite)",
+  "ab.retention_note": "Aplicado ao fim de cada coleta. O snapshot mais recente nunca é excluído.",
   "field.status": "Status",
   "field.processador": "Processador",
   "field.ram": "Memória RAM",
@@ -2852,6 +2921,17 @@
   "hi.card_sub": "{online} online · {changes} changes",
   "hi.loaded": "Snapshot #{id} loaded into the Collection view.",
   "hi.saved": "Changes saved to {path}",
+  "hi.compare": "Compare with",
+  "hi.base_previous": "Previous snapshot",
+  "hi.delete": "Delete",
+  "hi.cancel": "Cancel",
+  "hi.delete_confirm": "Delete the snapshot from {date}? This cannot be undone.",
+  "hi.between": "Changes between {base} and {date}",
+  "hi.no_changes_between": "No hardware changes between the two snapshots.",
+  "ab.history": "Snapshot history",
+  "ab.keep_last": "Keep only the last (0 = all)",
+  "ab.keep_days": "Keep only the last days (0 = no limit)",
+  "ab.retention_note": "Applied after each collection. The newest snapshot is never deleted.",
   "field.status": "Status",
   "field.processador": "Processor",
   "field.ram": "Memory",
@@ -3118,6 +3198,17 @@
   "hi.card_sub": "{online} en línea · {changes} cambios",
   "hi.loaded": "Instantánea #{id} cargada en la vista Recopilación.",
   "hi.saved": "Cambios guardados en {path}",
+  "hi.compare": "Comparar con",
+  "hi.base_previous": "Instantánea anterior",
+  "hi.delete": "Eliminar",
+  "hi.cancel": "Cancelar",
+  "hi.delete_confirm": "¿Eliminar la instantánea del {date}? No se puede deshacer.",
+  "hi.between": "Cambios entre {base} y {date}",
+  "hi.no_changes_between": "Ningún cambio de hardware entre las dos instantáneas.",
+  "ab.history": "Historial de instantáneas",
+  "ab.keep_last": "Conservar solo las últimas (0 = todas)",
+  "ab.keep_days": "Conservar solo las de los últimos días (0 = sin límite)",
+  "ab.retention_note": "Se aplica al terminar cada recopilación. La instantánea más reciente nunca se elimina.",
   "field.status": "Estado",
   "field.processador": "Procesador",
   "field.ram": "Memoria RAM",
@@ -3364,6 +3455,7 @@
     analytics: null,
     snapshots: [],
     selectedSnapshotId: null,
+    compareBaseId: null,
     selectedSnapshotDiff: null,
     selectedHostIp: null,
     paths: {},
@@ -3943,6 +4035,8 @@
       container.innerHTML = `<div style="padding:12px; color:var(--text-tertiary); font-size:12px;">${tr("hi.none")}</div>`;
       document.getElementById("snapshot-diff-tbody").innerHTML =
         `<tr><td colspan="5" class="empty-state">${tr("hi.first")}</td></tr>`;
+      document.getElementById("snapshot-diff-title").textContent = tr("hi.title");
+      document.getElementById("snapshot-base").innerHTML = "";
       return;
     }
 
@@ -3962,21 +4056,42 @@
     }).join("");
   }
 
+  // "Compare with" lists every other snapshot; empty means the one right before.
+  function renderSnapshotBaseOptions() {
+    const select = document.getElementById("snapshot-base");
+    const others = (appState.snapshots || []).filter(snap => snap.id !== appState.selectedSnapshotId);
+    if (!others.some(snap => snap.id === appState.compareBaseId)) appState.compareBaseId = null;
+    select.innerHTML = `<option value="">${tr("hi.base_previous")}</option>` + others.map(snap =>
+      `<option value="${snap.id}">${escapeHtml(snap.created_at)} · ${tr("hi.card_hosts", { n: snap.total_hosts })}</option>`
+    ).join("");
+    select.value = appState.compareBaseId ? String(appState.compareBaseId) : "";
+  }
+
+  function changeSnapshotBase(value) {
+    appState.compareBaseId = value ? Number(value) : null;
+    if (appState.selectedSnapshotId) selectSnapshot(appState.selectedSnapshotId);
+  }
+
   async function selectSnapshot(snapshotId) {
+    if (appState.selectedSnapshotId !== snapshotId) cancelDeleteSnapshot();
     appState.selectedSnapshotId = snapshotId;
     renderSnapshots();
+    renderSnapshotBaseOptions();
+    const base = appState.compareBaseId;
     try {
-      const diff = await api(`/api/snapshots/${snapshotId}/diff`);
+      const diff = await api(`/api/snapshots/${snapshotId}/diff${base ? `?base=${base}` : ""}`);
       appState.selectedSnapshotDiff = diff;
       const titleEl = document.getElementById("snapshot-diff-title");
-      if (diff.base_snapshot) {
+      if (diff.base_snapshot && base) {
+        titleEl.textContent = tr("hi.between", { base: diff.base_snapshot.created_at, date: diff.snapshot.created_at });
+      } else if (diff.base_snapshot) {
         titleEl.textContent = tr("hi.since", { date: diff.base_snapshot.created_at });
       } else {
         titleEl.textContent = tr("hi.initial", { date: diff.snapshot.created_at });
       }
       const tbody = document.getElementById("snapshot-diff-tbody");
       if (!diff.changes || !diff.changes.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${tr("hi.no_changes")}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${tr(base ? "hi.no_changes_between" : "hi.no_changes")}</td></tr>`;
         return;
       }
       tbody.innerHTML = diff.changes.map(c => `
@@ -4008,8 +4123,51 @@
   async function exportSnapshotDiff() {
     if (!appState.selectedSnapshotId) return;
     try {
-      const res = await api(`/api/snapshots/${appState.selectedSnapshotId}/diff/export`, "POST");
+      const res = await api(`/api/snapshots/${appState.selectedSnapshotId}/diff/export`, "POST", { base: appState.compareBaseId });
       setBanner(tr("hi.saved", { path: shortPath(res.path) }), res.path);
+    } catch (err) {
+      setBanner(err.message);
+    }
+  }
+
+  function askDeleteSnapshot() {
+    const snap = (appState.snapshots || []).find(item => item.id === appState.selectedSnapshotId);
+    if (!snap) return;
+    document.getElementById("snapshot-delete-text").textContent = tr("hi.delete_confirm", { date: snap.created_at });
+    document.getElementById("snapshot-delete-confirm").hidden = false;
+    document.getElementById("snapshot-delete-cancel").focus();
+  }
+
+  function cancelDeleteSnapshot() {
+    const bar = document.getElementById("snapshot-delete-confirm");
+    if (bar.hidden) return;
+    bar.hidden = true;
+    if (bar.contains(document.activeElement)) document.getElementById("snapshot-delete").focus();
+  }
+
+  async function confirmDeleteSnapshot() {
+    const snapshotId = appState.selectedSnapshotId;
+    document.getElementById("snapshot-delete-confirm").hidden = true;
+    try {
+      const data = await api(`/api/snapshots/${snapshotId}/delete`, "POST");
+      appState.selectedSnapshotId = null;
+      if (appState.compareBaseId === snapshotId) appState.compareBaseId = null;
+      applyServerState(data);
+      const first = (appState.snapshots || [])[0];
+      if (first) await selectSnapshot(first.id);
+      document.getElementById("snapshot-delete").focus();
+    } catch (err) {
+      setBanner(err.message);
+    }
+  }
+
+  async function saveRetention() {
+    try {
+      const res = await api("/api/config", "POST", {
+        snapshot_keep_last: parseInt(document.getElementById("input-keep-last").value || "0", 10),
+        snapshot_keep_days: parseInt(document.getElementById("input-keep-days").value || "0", 10)
+      });
+      appState.config = res.config;
     } catch (err) {
       setBanner(err.message);
     }
@@ -4194,6 +4352,8 @@
         applyTranslations();
       }
       syncPreferenceControls(data.config);
+      document.getElementById("input-keep-last").value = data.config.snapshot_keep_last || 0;
+      document.getElementById("input-keep-days").value = data.config.snapshot_keep_days || 0;
       if (!document.getElementById("input-ssh-user").value && data.config.ssh_user) {
         document.getElementById("input-ssh-user").value = data.config.ssh_user;
       }
@@ -4266,7 +4426,10 @@
     updateToolbarAndFooter();
     if (data.reset !== false || data.records?.length) renderScanTable();
     if (data.analytics) renderDashboard();
-    if (data.snapshots) renderSnapshots();
+    if (data.snapshots) {
+      renderSnapshots();
+      renderSnapshotBaseOptions();
+    }
   }
 
   window.addEventListener("DOMContentLoaded", async () => {

@@ -59,7 +59,7 @@ Agentless and read-only: nothing is installed or written on the machines.
 | **System** | Distribution, version and codename, kernel, architecture, hostname, desktop and display server, displays, package count, init, time zone, uptime, root disk usage. |
 | **Hardware** | Manufacturer and model, motherboard, BIOS, processor with cores, threads and frequency, every memory slot (size, type, speed, part number) and the board's maximum, every disk and partition, graphics, network adapters with IPv4 and MAC. |
 | **Fleet view** | Storage types, memory capacity and Linux distributions across the online machines, and a breakdown by location. |
-| **Snapshots** | Local history of every collection with a field-by-field comparison, exportable to CSV. |
+| **Snapshots** | Local history of every collection with a field-by-field comparison against the previous one or any other (**Compare with**), exportable to CSV with both dates. Delete a snapshot (asks first) or set a retention in About and settings (keep the last N, or the last N days; applied after each collection, the newest is always kept). |
 | **Exports** | Excel (summary with data bars, inventory grouped by subject), interactive HTML that works offline, CSV with formula injection neutralized. |
 | **Interface** | English, Portuguese (Brazil) and Spanish, following the system language; built-in guide with an animated tutorial; resizable down to 720 × 520. |
 | **Desktop** | Native window on Linux, Windows and macOS (pywebview or GTK), or your browser; packaged builds for the three systems; an About and settings sheet (sidebar footer or the app name) with language, light or dark theme, the version and a one-click update to a newer release. |
