@@ -131,7 +131,7 @@ La ventana usa [pywebview](https://pywebview.flowrl.com/) si está instalado, lu
 
 ```sh
 python3 -m pip install -r requirements-build.txt
-python3 build.py                   # dist/invenux-v0.9.2
+python3 build.py                   # dist/invenux-v1.0.0
 ```
 
 En Linux, `./install.sh` en la carpeta extraída de la release copia el programa a `~/.local/lib/invenux`, crea el enlace `~/.local/bin/invenux` y agrega el acceso y el icono al menú, sin sudo. `./install.sh --uninstall` lo quita y conserva el historial y los informes.
@@ -261,18 +261,18 @@ No. Los destinos deben ser Linux con SSH. El programa en sí funciona en Linux, 
 El 22 por defecto. Cámbielo en el panel SSH o con `--ssh-port` en la línea de comandos. Los equipos en otro puerto llevan una columna `SSH_PORT` en la hoja; las celdas vacías usan el puerto del panel.
 
 **¿Se puede usar sin la interfaz?**
-Sí, vea la línea de comandos arriba. Requiere clave privada.
+Sí, vea la línea de comandos arriba. Acepta clave privada, las claves del `ssh-agent` o una contraseña en `INVENUX_SSH_PASSWORD` o `--ask-password`.
 
 ## Limitaciones
 
 - Los destinos deben ser Linux con SSH.
 - Los detalles de las ranuras de memoria requieren root o sudo sin contraseña para `dmidecode` en el destino.
 - El tipo de almacenamiento identifica discos virtuales por modelo/fabricante/nombre o por un hipervisor detectado. La detección de hipervisor también clasifica los discos pasados a la VM como Virtual. Los demás discos usan nombre/transporte NVMe y el indicador de rotación del kernel; el medio no rotativo incluye memoria flash USB.
-- La línea de comandos solo acepta clave privada, no contraseña.
+- La línea de comandos no tiene opción de contraseña: use clave, `--agent`, `INVENUX_SSH_PASSWORD` o `--ask-password`.
 
 ## Próximos pasos
 
-El trabajo previsto y los problemas conocidos están en las [issues](https://github.com/lucaswotta/invenux/issues): instaladores firmados, agente SSH y jump host, puerto SSH por equipo, recopilaciones programadas con informe de cambios, comparación entre dos instantáneas cualesquiera y accesibilidad. Los comentarios y pull requests en cualquiera de ellas son bienvenidos.
+El trabajo previsto y los problemas conocidos están en las [issues](https://github.com/lucaswotta/invenux/issues): instaladores firmados y la verificación del selector nativo de archivos y del `.deb` en Windows, macOS y Debian/Ubuntu. Los comentarios y pull requests en cualquiera de ellas son bienvenidos.
 
 ## Contribuir
 
