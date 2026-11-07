@@ -2,6 +2,7 @@
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -102,6 +103,7 @@ class JumpHostAndAgentTests(unittest.TestCase):
             self.assertIsNotNone(remembered.lookup(f"[127.0.0.1]:{bastion.port}"))
             self.assertIsNotNone(remembered.lookup(name))
 
+    @unittest.skipIf(sys.platform == "win32", "the Windows OpenSSH agent does not take a unix socket path")
     @unittest.skipUnless(shutil.which("ssh-agent") and shutil.which("ssh-add"), "OpenSSH agent tools are not installed")
     def test_keys_loaded_in_ssh_agent_authenticate_without_key_or_password(self):
         key = paramiko.RSAKey.generate(2048)
