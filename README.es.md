@@ -196,6 +196,7 @@ Register-ScheduledTask -TaskName "Inventario Invenux" -Action $action -Trigger $
 | `LOCATION` | No | Sede o sala; agrupa el Parque y los informes. También valen `UBICACION`, `SEDE`, `SUCURSAL`, `SITE` o `LOCAL`. |
 | `USER` | No | Usuario SSH de ese equipo cuando difiere del panel SSH. También valen `USERNAME`, `SSH_USER`, `LOGIN` o `USUARIO`. |
 | `PASSWORD` | No | Contraseña SSH de ese equipo, para parques con contraseñas distintas; lo normal es dejarla en el panel SSH. También valen `PASS`, `SENHA` o `CONTRASENA`. Las celdas vacías usan el panel. Invenux solo la mantiene en memoria y nunca la escribe en la tabla, informes, instantáneas ni registros, pero el archivo la guarda en texto plano. |
+| `SSH_PORT` | No | Puerto SSH de ese equipo cuando no es el del panel. También valen `PORT`, `PORTA` o `PUERTO`. Las celdas vacías usan el panel; las filas con un puerto no válido (fuera de 1 a 65535) se omiten y se listan al cargar. El puerto usado aparece en los detalles y se exporta en los informes. |
 | Cualquier otra | No | Se copia tal cual a la tabla y a todos los informes, por ejemplo `ASSET_TAG`, `OWNER` o `NOTES`. |
 
 Las filas sin dirección y las direcciones repetidas se omiten y se listan al cargar. La plantilla (**Obtener la plantilla**) trae dos filas de ejemplo y una hoja que explica cada columna, en el idioma de la interfaz.
@@ -255,14 +256,14 @@ Todavía no: Windows recibe un `.exe`, macOS una app y Linux una carpeta con `in
 No. Los destinos deben ser Linux con SSH. El programa en sí funciona en Linux, Windows y macOS.
 
 **¿Qué puerto usa?**
-El 22 por defecto. Cámbielo en el panel SSH o con `--ssh-port` en la línea de comandos; todos los equipos de una recopilación usan el mismo puerto.
+El 22 por defecto. Cámbielo en el panel SSH o con `--ssh-port` en la línea de comandos. Los equipos en otro puerto llevan una columna `SSH_PORT` en la hoja; las celdas vacías usan el puerto del panel.
 
 **¿Se puede usar sin la interfaz?**
 Sí, vea la línea de comandos arriba. Requiere clave privada.
 
 ## Limitaciones
 
-- Los destinos deben ser Linux con SSH, y todos los equipos de una recopilación comparten un puerto SSH.
+- Los destinos deben ser Linux con SSH.
 - Los detalles de las ranuras de memoria requieren root o sudo sin contraseña para `dmidecode` en el destino.
 - El tipo de almacenamiento identifica discos virtuales por modelo/fabricante/nombre o por un hipervisor detectado. La detección de hipervisor también clasifica los discos pasados a la VM como Virtual. Los demás discos usan nombre/transporte NVMe y el indicador de rotación del kernel; el medio no rotativo incluye memoria flash USB.
 - La línea de comandos solo acepta clave privada, no contraseña.

@@ -169,6 +169,14 @@ class DesktopUtilityUITests(unittest.TestCase):
             self.assertEqual(state_payload["analytics"]["total"], 2)
             self.assertEqual(state_payload["analytics"]["locations_count"], 2)
 
+            # Invalid SSH ports are skipped and named in the status, like rows without an address
+            csv_path.write_text("IP,SSH_PORT\n192.0.2.10,2222\n192.0.2.11,99999\n", encoding="utf-8")
+            with urllib.request.urlopen(req_load) as response:
+                state_payload = json.loads(response.read().decode("utf-8"))
+            self.assertEqual([r["ssh_port"] for r in state_payload["records"]], [2222])
+            self.assertEqual(state_payload["targets_info"]["invalid_port_rows"], [3])
+            self.assertIn("3", state_payload["status_text"].split("·")[-1])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -105,6 +105,49 @@ class InventoryEngineTests(unittest.TestCase):
         self.assertTrue(any(event[0] == "HOST_RESULT" for event in events))
         self.assertNotIn("s3cr3t-row", repr(events))
 
+    def test_ssh_port_column_overrides_the_panel_and_lists_invalid_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "assets.csv"
+            path.write_text(
+                "IP,SSH_PORT,LOCATION\n"
+                "192.0.2.10,2222,Lab\n"
+                "192.0.2.11,,Lab\n"
+                "192.0.2.12,70000,Lab\n"
+                "192.0.2.13,ssh,Lab\n"
+                "192.0.2.14, 2200 ,Lab\n",
+                encoding="utf-8",
+            )
+            engine = self.make_engine(filepath=str(path), ssh_port=22)
+            ports = {}
+
+            def fake_get_hardware_info(**kwargs):
+                ports[kwargs["ip"]] = kwargs["port"]
+                return {"status": "SUCESSO", "hardware_details": {}}
+
+            with patch.object(self.core, "get_hardware_info", side_effect=fake_get_hardware_info):
+                engine.run_inventory()
+
+        self.assertEqual(ports, {"192.0.2.10": 2222, "192.0.2.11": 22, "192.0.2.14": 2200})
+        summary = engine.load_summary
+        self.assertEqual(summary["invalid_port_rows"], [4, 5])
+        self.assertEqual((summary["port_column"], summary["hosts_with_port"]), ("SSH_PORT", 2))
+        self.assertEqual(summary["extra_columns"], ["LOCATION"])
+        by_ip = {terminal.ip: terminal for terminal in engine.terminals}
+        self.assertEqual(by_ip["192.0.2.10"].ssh_port, 2222)
+        self.assertEqual(by_ip["192.0.2.11"].ssh_port, 22)
+        self.assertNotIn("SSH_PORT", by_ip["192.0.2.10"].metadata)
+
+    def test_port_aliases_and_excel_numbers(self):
+        self.assertEqual(self.core._parse_port(2222.0), 2222)
+        self.assertEqual(self.core._parse_port("22"), 22)
+        for invalid in (0, 65536, 22.5, "-1", "2 2", True):
+            self.assertIsNone(self.core._parse_port(invalid), invalid)
+        for alias in ("PORT", "Porta", "puerto"):
+            with self.subTest(alias=alias):
+                engine = self.make_engine()
+                targets = engine._terminals_from_rows(["IP", alias], [["192.0.2.10", "2022"]])
+                self.assertEqual(targets[0].ssh_port, 2022)
+
     def test_loader_reads_xlsx_and_preserves_typed_metadata(self):
         from openpyxl import Workbook
 

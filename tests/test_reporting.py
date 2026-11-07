@@ -27,6 +27,7 @@ SAMPLE = {
     "distro": "Ubuntu 24.04 LTS",
     "kernel": "6.8",
     "erro": "",
+    "ssh_port": 2222,
     "dta_atualizacao": "2026-10-19 14:00:00",
     "hardware_details": {
         "hostname": "detected-lab-01",
@@ -90,6 +91,7 @@ class ReportingTests(unittest.TestCase):
         self.assertEqual(row["Location"], "Test Lab")
         self.assertEqual(row["Status"], "ONLINE")
         self.assertEqual(row["Detected hostname"], "detected-lab-01")
+        self.assertEqual(row["SSH port"], "2222")
         self.assertEqual(row["Manufacturer"], "Example Systems")
         self.assertIn("nvme0n1", row["Storage devices"])
         self.assertEqual(row["Data coverage"], "92%")
