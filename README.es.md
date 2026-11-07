@@ -229,7 +229,7 @@ Sí, vea la línea de comandos arriba. Requiere clave privada.
 
 - Los destinos deben ser Linux con SSH, y todos los equipos de una recopilación comparten un puerto SSH.
 - Los detalles de las ranuras de memoria requieren root en el destino.
-- El tipo de almacenamiento usa el nombre del bus y el indicador de rotación del kernel, así que los discos virtuales pueden aparecer como SSD.
+- El tipo de almacenamiento identifica discos virtuales por modelo/fabricante/nombre o por un hipervisor detectado. La detección de hipervisor también clasifica los discos pasados a la VM como Virtual. Los demás discos usan nombre/transporte NVMe y el indicador de rotación del kernel; el medio no rotativo incluye memoria flash USB.
 - La línea de comandos solo acepta clave privada, no contraseña.
 
 ## Próximos pasos

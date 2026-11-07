@@ -99,6 +99,60 @@ class HardwareParserTests(unittest.TestCase):
         self.assertEqual(parsed[1]["kind"], "HDD")
         self.assertEqual(parsed[1]["capacity"], "1 TB")
 
+    def test_lsblk_virtual_and_physical_devices(self):
+        fixtures = [
+            ("sda", "QEMU HARDDISK", "QEMU", "sata", "Virtual"),
+            ("vda", None, None, None, "Virtual"),
+            ("vdab", "", "", "virtio", "Virtual"),
+            ("sda", "VBOX HARDDISK", "ATA", "sata", "Virtual"),
+            ("sda", "Virtual disk", "VMware", "spi", "Virtual"),
+            ("sda", "Virtual Disk", "Msft", None, "Virtual"),
+            ("sda", "", "VMware", "sas", "Virtual"),
+            ("nvme0n1", "VMware Virtual NVMe Disk", "", "nvme", "Virtual"),
+            ("nvme0n1", "Example NVMe", "Example", "nvme", "NVMe"),
+            ("sda", "Example SSD", "ATA", "sata", "SSD / flash"),
+            ("sdb", "Archive Drive", "ATA", "sata", "HDD"),
+        ]
+        for name, model, vendor, transport, expected in fixtures:
+            with self.subTest(name=name, model=model, vendor=vendor):
+                device = {"name": name, "type": "disk", "size": 512_000_000_000,
+                          "rota": expected == "HDD", "model": model,
+                          "vendor": vendor, "tran": transport}
+                parsed = inspector._parse_lsblk(json.dumps({"blockdevices": [device]}))
+                self.assertEqual(parsed[0]["kind"], expected)
+
+    def test_lsblk_pairs_recognizes_virtual_disks_regardless_of_rotation(self):
+        for rota in ("0", "1"):
+            with self.subTest(rota=rota):
+                parsed = inspector._parse_lsblk(
+                    f'NAME="sda" TYPE="disk" SIZE="512000000000" ROTA="{rota}" '
+                    'MODEL="Virtual Disk" VENDOR="Msft" TRAN="" RM="0"'
+                )
+                self.assertEqual(parsed[0]["kind"], "Virtual")
+
+    def test_collector_uses_hypervisor_but_not_container_for_storage(self):
+        disk = {"name": "nvme0n1", "type": "disk", "size": 512_000_000_000,
+                "rota": 0, "tran": "nvme"}
+        for hypervisor, virtualization, expected in (
+            ("kvm", "kvm", "Virtual"), ("vmware", "vmware", "Virtual"),
+            ("microsoft", "microsoft", "Virtual"), ("none", "docker", "NVMe"),
+            ("", "", "NVMe"), ("none", "none", "NVMe"),
+        ):
+            with self.subTest(hypervisor=hypervisor, virtualization=virtualization):
+                sections = {"lsblk": json.dumps({"blockdevices": [disk]}),
+                            "hypervisor": hypervisor, "virtualization": virtualization}
+                output = "\n".join(
+                    f"__INVENUX_BEGIN_{key}__\n{value}\n__INVENUX_END_{key}__"
+                    for key, value in sections.items()
+                )
+                with patch.object(inspector, "_run_command", return_value=output) as probe:
+                    details = inspector._collect_linux_hardware(Mock())
+                command = probe.call_args.args[1]
+                self.assertIn("systemd-detect-virt --vm", command)
+                self.assertIn("MODEL,VENDOR,TRAN", command)
+                self.assertEqual(details["disk_type"], expected)
+                self.assertIn(expected, details["hardware_details"]["storage_devices"])
+
     def test_network_parser_excludes_loopback_and_macos_colon_suffixes(self):
         parsed = inspector._parse_network_interfaces(
             "2: enp1s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 state UP mode DEFAULT\n"

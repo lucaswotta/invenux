@@ -211,7 +211,8 @@ def _format_capacity(size_bytes: int) -> str:
     return f"{size_bytes / (1000**3):.0f} GB"
 
 
-def _parse_lsblk(output: str) -> list[dict[str, Any]]:
+def _parse_lsblk(output: str, hypervisor: str = "") -> list[dict[str, Any]]:
+    virtual_host = _clean_string(hypervisor).casefold() not in {"", "none", "n/a", "not available"}
     try:
         data = json.loads(output)
     except (json.JSONDecodeError, TypeError):
@@ -248,17 +249,24 @@ def _parse_lsblk(output: str) -> list[dict[str, Any]]:
             continue
         rota = str(device.get("rota", "")).strip().casefold()
         transport = _clean_string(device.get("tran")).casefold()
-        if name.casefold().startswith("nvme") or transport == "nvme":
+        model = _clean_string(device.get("model"))
+        vendor = _clean_string(device.get("vendor"))
+        identity = f"{model} {vendor}".casefold()
+        virtual_device = bool(re.fullmatch(r"vd[a-z]+", name.casefold())) or any(
+            marker in identity for marker in ("qemu", "vbox", "virtual disk", "vmware", "virtio", "hyper-v")
+        )
+        if virtual_device or virtual_host:
+            kind = "Virtual"
+        elif name.casefold().startswith("nvme") or transport == "nvme":
             kind = "NVMe"
         elif rota in {"1", "true", "yes"}:
             kind = "HDD"
         elif rota in {"0", "false", "no"}:
             # The kernel reports a non-rotating device; this does not prove a
-            # physical SATA/NVMe SSD (USB flash and virtual disks also qualify).
+            # physical SATA/NVMe SSD (USB flash also qualifies).
             kind = "SSD / flash"
         else:
             kind = "Unknown"
-        model = _clean_string(device.get("model"))
         raw_mountpoints = device.get("mountpoints", device.get("mountpoint", []))
         if isinstance(raw_mountpoints, str):
             mountpoints = [raw_mountpoints] if raw_mountpoints else []
@@ -294,7 +302,7 @@ def _parse_lsblk(output: str) -> list[dict[str, Any]]:
         parsed.append({
             "name": name,
             "kind": kind,
-            "classification_basis": "NVMe transport/name" if kind == "NVMe" else "kernel rotational flag" if kind in {"HDD", "SSD / flash"} else "unavailable",
+            "classification_basis": "virtual device model/vendor/name" if virtual_device else "detected hypervisor" if virtual_host else "NVMe transport/name" if kind == "NVMe" else "kernel rotational flag" if kind in {"HDD", "SSD / flash"} else "unavailable",
             "size_bytes": size,
             "capacity": _format_capacity(size),
             "model": model or "N/A",
@@ -429,9 +437,9 @@ printf '%s\n' '__INVENUX_END_memory_devices__'
 
 printf '%s\n' '__INVENUX_BEGIN_lsblk__'
 if command -v lsblk >/dev/null 2>&1; then
-  lsblk -J -b -o NAME,TYPE,SIZE,ROTA,MODEL,TRAN,RM,FSTYPE,MOUNTPOINTS 2>/dev/null ||
-    lsblk -J -b -o NAME,TYPE,SIZE,ROTA,MODEL,TRAN,RM,FSTYPE,MOUNTPOINT 2>/dev/null ||
-    lsblk -dn -b -P -o NAME,TYPE,SIZE,ROTA,MODEL,TRAN,RM 2>/dev/null ||
+  lsblk -J -b -o NAME,TYPE,SIZE,ROTA,MODEL,VENDOR,TRAN,RM,FSTYPE,MOUNTPOINTS 2>/dev/null ||
+    lsblk -J -b -o NAME,TYPE,SIZE,ROTA,MODEL,VENDOR,TRAN,RM,FSTYPE,MOUNTPOINT 2>/dev/null ||
+    lsblk -dn -b -P -o NAME,TYPE,SIZE,ROTA,MODEL,VENDOR,TRAN,RM 2>/dev/null ||
     true
 fi
 printf '%s\n' '__INVENUX_END_lsblk__'
@@ -517,6 +525,12 @@ printf '%s\n' '__INVENUX_END_netdetails__'
 printf '%s\n' '__INVENUX_BEGIN_uptime__'
 cat /proc/uptime 2>/dev/null || true
 printf '%s\n' '__INVENUX_END_uptime__'
+
+printf '%s\n' '__INVENUX_BEGIN_hypervisor__'
+if command -v systemd-detect-virt >/dev/null 2>&1; then
+  systemd-detect-virt --vm 2>/dev/null || true
+fi
+printf '%s\n' '__INVENUX_END_hypervisor__'
 
 printf '%s\n' '__INVENUX_BEGIN_virtualization__'
 if command -v systemd-detect-virt >/dev/null 2>&1; then
@@ -810,7 +824,7 @@ def _collect_linux_hardware(
     )
 
     lsblk_text = sections.get("lsblk", "")
-    drives = _parse_lsblk(lsblk_text)
+    drives = _parse_lsblk(lsblk_text, sections.get("hypervisor", ""))
     drive_types = list(dict.fromkeys(
         drive["kind"] for drive in drives if drive["kind"] != "Unknown"
     ))
@@ -936,7 +950,7 @@ def _collect_linux_hardware(
         "ram_used": _format_gib(used_bytes),
         "ram_available": _format_gib(available_bytes),
         "storage_devices": "\n".join(drive_lines) if drive_lines else "N/A",
-        "storage_classification_basis": "NVMe is identified by transport/name; HDD vs non-rotating media uses the Linux kernel rotational flag. Virtual disks and flash media can affect this classification.",
+        "storage_classification_basis": "Virtual disks are identified by model/vendor/name or a detected hypervisor (including passthrough disks). Otherwise NVMe uses transport/name; HDD vs non-rotating media uses the Linux kernel rotational flag.",
         "gpu": "\n".join(gpus) if gpus else "N/A",
         "network_adapters": "\n".join(network_lines) if network_lines else "N/A",
         "bios": bios,

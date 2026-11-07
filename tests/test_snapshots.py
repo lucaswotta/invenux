@@ -7,6 +7,20 @@ from snapshots import SnapshotStore, compute_fleet_analytics, compute_records_di
 
 
 class SnapshotAndAnalyticsTests(unittest.TestCase):
+    def test_virtual_storage_has_its_own_bucket_and_is_not_flash(self):
+        records = [{"status": "ONLINE", "disk_type": kind}
+                   for kind in ("Virtual", "Virtual + SSD / flash", "NVMe", "SSD / flash", "HDD")]
+        records.append({"status": "OFFLINE", "disk_type": "Virtual"})
+        analytics = compute_fleet_analytics(records)
+        self.assertEqual(analytics["virtual_count"], 2)
+        self.assertEqual(analytics["flash_pct"], 40.0)
+        self.assertEqual(analytics["locations"][0]["flash"], 2)
+        self.assertEqual(analytics["locations"][0]["virtual"], 2)
+        distribution = {item["label"]: item for item in analytics["storage_distribution"]}
+        self.assertEqual(distribution["Virtual"]["count"], 2)
+        self.assertEqual(distribution["Virtual"]["percent"], 40.0)
+        self.assertEqual(sum(item["count"] for item in distribution.values()), 5)
+
     def test_compute_fleet_analytics_is_neutral_and_groups_by_location(self):
         records = [
             {
