@@ -18,6 +18,7 @@ Notable changes to Invenux (called Invent-SSH up to 0.5.0) are recorded here.
 
 - During a scan the interface asks only for the records that changed (#29).
 - The version line in About and settings no longer ends with "This is the latest version"; the manual update check still says so in the banner.
+- About and settings no longer has the author's profile button.
 - The Status column is wider, so "No access" is no longer cut off.
 
 ### Fixed
