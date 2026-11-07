@@ -54,6 +54,26 @@ class CommandLinePasswordTests(unittest.TestCase):
         self.assertEqual(controller.config["ssh_pass"], "typed-secret")
         self.assertNotIn("typed-secret", saved)
 
+    def test_agent_and_jump_host_options_reach_the_collection(self):
+        code, controller, _env, saved = self.run_main(
+            ["--agent", "--jump-host", "bastion.example.test", "--jump-port", "2200", "--jump-user", "jumper"], {}
+        )
+        self.assertEqual(code, 0)
+        self.assertTrue(controller.config["ssh_use_agent"])
+        self.assertEqual(
+            (controller.config["jump_host"], controller.config["jump_port"], controller.config["jump_user"]),
+            ("bastion.example.test", 2200, "jumper"),
+        )
+        self.assertIn("bastion.example.test", saved)
+
+    def test_agent_counts_as_authentication(self):
+        from core import Terminal
+
+        targets = [Terminal(ip="192.0.2.10")]
+        with self.assertRaises(ValueError):
+            app._check_access(targets, {}, "inventory", False)
+        app._check_access(targets, {}, "inventory", True)
+
     def test_there_is_no_password_argument(self):
         with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
             app.main(["--input", "x.csv", "--password", "visible"])

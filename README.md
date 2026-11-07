@@ -55,7 +55,7 @@ Agentless and read-only: nothing is installed or written on the machines.
 
 | Area | What you get |
 | --- | --- |
-| **Collection** | Up to 128 parallel SSH connections on any SSH port (22 by default), password or private key, trust on first use for host keys, cancel at any time. |
+| **Collection** | Up to 128 parallel SSH connections on any SSH port (22 by default), password, private key or the keys in `ssh-agent`, an optional jump host (bastion), trust on first use for host keys, cancel at any time. |
 | **System** | Distribution, version and codename, kernel, architecture, hostname, desktop and display server, displays, package count, init, time zone, uptime, root disk usage. |
 | **Hardware** | Manufacturer and model, motherboard, BIOS, processor with cores, threads and frequency, every memory slot (size, type, speed, part number) and the board's maximum, every disk and partition, graphics, network adapters with IPv4 and MAC. |
 | **Fleet view** | Storage types, memory capacity and Linux distributions across the online machines, and a breakdown by location. |
@@ -138,7 +138,7 @@ On Linux, `./install.sh` in the extracted release folder copies the program to `
 ## How to use
 
 1. **Targets:** choose the machine spreadsheet, drag it onto the window, or paste its path. No spreadsheet yet? **Get the template**.
-2. **SSH:** enter the user, the port (22 unless your machines use another one) and a password or a private key. The password stays in memory only.
+2. **SSH:** enter the user, the port (22 unless your machines use another one) and a password, a private key or **Use the keys in ssh-agent**. The password stays in memory only. Machines reachable only through a bastion: fill **Jump host** (host, port and user; an empty user means the SSH user). Invenux logs in to the bastion once per collection, with the same password, key or agent, and opens one forwarded channel per machine; host keys are checked on the bastion and on every machine.
 3. **Start collection:** follow each machine in the table and click a row for its details.
 4. **Export:** Excel, HTML or CSV, saved in the `Invenux` folder inside your Documents folder, with **Open** and **Open folder** right after.
 
@@ -149,6 +149,7 @@ On Linux, `./install.sh` in the extracted release folder copies the program to `
 ```sh
 python3 app.py --input machines.xlsx --user inventory --key ~/.ssh/id_ed25519 --ssh-port 22 --output-format XLSX
 python3 app.py --input machines.xlsx --user inventory --ask-password
+python3 app.py --input machines.xlsx --user inventory --agent --jump-host bastion.example.com --jump-user admin
 ```
 
 ### Scheduled collections
