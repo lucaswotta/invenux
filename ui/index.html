@@ -3523,7 +3523,6 @@
     }
     let line = tr("up.current", { v: appState.version || "" });
     if (available) line += " " + tr("up.available", { v: update.version });
-    else if (update.state === "latest") line += " " + tr("up.latest");
     else if (update.message) line += " " + update.message;
     document.getElementById("about-version-line").textContent = line;
     document.getElementById("about-version").textContent = tr("ab.version", { v: appState.version || "" });
