@@ -58,7 +58,7 @@ class DesktopUtilityUITests(unittest.TestCase):
         keys = set(catalog["en"])
         for language, table in catalog.items():
             self.assertEqual(set(table), keys, language)
-        used = set(re.findall(r'data-i18n(?:-html|-placeholder|-title)?="([^"]+)"', html))
+        used = set(re.findall(r'data-i18n(?:-html|-placeholder|-title|-aria)?="([^"]+)"', html))
         used |= set(re.findall(r'tr\("([a-z][\w.]*)"', html))
         self.assertEqual(used - keys, set())
 
