@@ -59,7 +59,7 @@ Sem agente e só leitura: nada é instalado ou gravado nas máquinas.
 | **Sistema** | Distribuição, versão e codinome, kernel, arquitetura, hostname, ambiente gráfico e servidor de vídeo, telas, quantidade de pacotes, init, fuso horário, tempo ligado, uso do disco `/`. |
 | **Hardware** | Fabricante e modelo, placa-mãe, BIOS, processador com núcleos, threads e frequência, cada slot de memória (tamanho, tipo, velocidade, modelo do pente) e o máximo da placa, cada disco e partição, vídeo, adaptadores de rede com IPv4 e MAC. |
 | **Parque** | Tipos de armazenamento, capacidade de memória e distribuições Linux das máquinas acessíveis, e a divisão por local. |
-| **Snapshots** | Histórico local de cada coleta com comparação campo a campo, exportável em CSV. |
+| **Snapshots** | Histórico local de cada coleta com comparação campo a campo com o anterior ou com qualquer outro (**Comparar com**), exportável em CSV com as duas datas. Exclua um snapshot (com confirmação) ou defina a retenção em Sobre e ajustes (manter os últimos N, ou os dos últimos N dias; aplicada ao fim de cada coleta, o mais recente sempre fica). |
 | **Exportação** | Excel (resumo com barras de proporção, inventário agrupado por assunto), HTML interativo que funciona offline, CSV com proteção contra fórmulas. |
 | **Interface** | Português, inglês e espanhol, seguindo o idioma do sistema; guia embutido com tutorial animado; redimensionável até 720 × 520. |
 | **Desktop** | Janela nativa no Linux, Windows e macOS (pywebview ou GTK), ou o navegador; pacotes prontos para os três sistemas; janela Sobre e ajustes (rodapé da barra lateral ou nome do app) com idioma, tema claro ou escuro, versão e atualização com um clique quando sai versão nova. |

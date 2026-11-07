@@ -469,9 +469,9 @@ def save_report(
 
 
 _DIFF_HEADERS = {
-    "en": ("IP", "Hostname", "Field", "Previous value", "Current value"),
-    "pt-br": ("IP", "Hostname", "Campo", "Valor anterior", "Valor atual"),
-    "es": ("IP", "Hostname", "Campo", "Valor anterior", "Valor actual"),
+    "en": ("IP", "Hostname", "Field", "Previous value", "Current value", "Previous snapshot", "Current snapshot"),
+    "pt-br": ("IP", "Hostname", "Campo", "Valor anterior", "Valor atual", "Snapshot anterior", "Snapshot atual"),
+    "es": ("IP", "Hostname", "Campo", "Valor anterior", "Valor actual", "Instantánea anterior", "Instantánea actual"),
 }
 _DIFF_FIELD_LABELS = {
     "status": "Status", "processador": "Processor", "ram": "Memory", "disk_type": "Storage type",
@@ -480,18 +480,32 @@ _DIFF_FIELD_LABELS = {
 
 
 def save_snapshot_diff(
-    changes: Sequence[Mapping[str, Any]], output_dir: str | Path, snapshot_id: int, language: str = "en"
+    changes: Sequence[Mapping[str, Any]],
+    output_dir: str | Path,
+    snapshot_id: int,
+    language: str = "en",
+    base_snapshot: Mapping[str, Any] | None = None,
+    snapshot: Mapping[str, Any] | None = None,
 ) -> Path:
-    """Save snapshot changes as CSV; values come from remote hosts and are neutralized."""
+    """Save snapshot changes as CSV; values come from remote hosts and are neutralized.
+
+    Every row carries the dates of both snapshots, so the period survives filtering and sorting.
+    """
     language = report_language(language)
     headers = _DIFF_HEADERS[language]
+    period = ((base_snapshot or {}).get("created_at"), (snapshot or {}).get("created_at"))
     rows = []
     for change in changes:
         field_label = _DIFF_FIELD_LABELS.get(str(change.get("field_key")))
         field = COLUMN_LABELS[language][field_label] if field_label else _value(change.get("field"))
-        values = (change.get("ip"), change.get("hostname"), field, change.get("previous_value"), change.get("current_value"))
+        values = (
+            change.get("ip"), change.get("hostname"), field, change.get("previous_value"), change.get("current_value"),
+            *period,
+        )
         rows.append({header: _value(value) for header, value in zip(headers, values)})
-    path = Path(output_dir) / f"snapshot_diff_{int(snapshot_id)}.csv"
+    base_id = (base_snapshot or {}).get("id")
+    name = f"snapshot_diff_{int(base_id)}_{int(snapshot_id)}" if base_id is not None else f"snapshot_diff_{int(snapshot_id)}"
+    path = Path(output_dir) / f"{name}.csv"
     _write_csv(path, list(headers), rows)
     return path
 
