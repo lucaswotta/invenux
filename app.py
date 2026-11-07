@@ -52,7 +52,6 @@ PASSWORD_ENV = "INVENUX_SSH_PASSWORD"
 ABOUT_LINKS = {
     "repo": "https://github.com/lucaswotta/invenux",
     "issues": "https://github.com/lucaswotta/invenux/issues",
-    "author": "https://github.com/lucaswotta",
 }
 
 COLORS = {

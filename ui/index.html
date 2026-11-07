@@ -348,6 +348,14 @@
     flex-wrap: wrap;
   }
 
+  .sheet-section .update-row {
+    margin-top: 8px;
+  }
+
+  .sheet-section .update-row + .checkbox-row {
+    margin-top: 10px;
+  }
+
   /* Main Area */
   .main-area {
     display: flex;
@@ -1598,22 +1606,6 @@
     color: var(--text-secondary);
   }
 
-  .about-stack {
-    display: grid;
-    grid-template-columns: 90px 1fr;
-    gap: 4px 12px;
-    font-size: 12.5px;
-    margin: 4px 0 12px;
-  }
-
-  .about-stack dt {
-    color: var(--text-secondary);
-  }
-
-  .about-stack dd {
-    color: var(--text-primary);
-  }
-
   /* Small macOS segmented control; a native <select> lost its open menu on every state refresh. */
   .mini-seg {
     display: inline-flex;
@@ -2262,12 +2254,12 @@
           <table id="hosts-table" data-i18n-aria="a11y.hosts">
             <thead>
               <tr>
-                <th style="width: 10%;" data-i18n="col.status">Status</th>
+                <th style="width: 12%;" data-i18n="col.status">Status</th>
                 <th style="width: 11%;" data-i18n="col.ip">Endereço IP</th>
-                <th style="width: 12%;" data-i18n="col.hostname">Hostname</th>
-                <th style="width: 10%;" data-i18n="col.location">Local</th>
-                <th style="width: 21%;" data-i18n="col.cpu">Processador</th>
-                <th style="width: 9%;" data-i18n="col.memory">Memória</th>
+                <th style="width: 11%;" data-i18n="col.hostname">Hostname</th>
+                <th style="width: 9%;" data-i18n="col.location">Local</th>
+                <th style="width: 20%;" data-i18n="col.cpu">Processador</th>
+                <th style="width: 10%;" data-i18n="col.memory">Memória</th>
                 <th style="width: 12%;" data-i18n="col.storage">Armazenamento</th>
                 <th style="width: 15%;" data-i18n="col.system">Sistema</th>
               </tr>
@@ -2544,18 +2536,9 @@
     <section class="sheet-section">
       <h4 data-i18n="ab.about">Sobre</h4>
       <p data-i18n="ab.what">Inventário de hardware de máquinas Linux por SSH, sem instalar nada nelas.</p>
-      <p data-i18n="ab.author">Criado por Lucas Motta, analista de sistemas e desenvolvedor.</p>
-      <dl class="about-stack">
-        <dt data-i18n="ab.stack_app">Programa</dt><dd>Python 3 · paramiko (SSH) · SQLite (snapshots)</dd>
-        <dt data-i18n="ab.stack_reports">Relatórios</dt><dd>openpyxl · Pillow · HTML e CSV</dd>
-        <dt data-i18n="ab.stack_ui">Interface</dt><dd data-i18n="ab.stack_ui_value">HTML, CSS e JavaScript, sem framework</dd>
-        <dt data-i18n="ab.stack_window">Janela</dt><dd>pywebview · WebView2 · WebKit · Qt WebEngine</dd>
-        <dt data-i18n="ab.stack_build">Pacotes</dt><dd>PyInstaller · GitHub Actions</dd>
-      </dl>
       <div class="update-row">
         <button class="btn btn-small" onclick="openLink('repo')" data-i18n="ab.repo">Repositório no GitHub</button>
         <button class="btn btn-small" onclick="openLink('issues')" data-i18n="ab.issues">Reportar um problema</button>
-        <button class="btn btn-small" onclick="openLink('author')" data-i18n="ab.profile">Perfil do autor</button>
       </div>
       <p class="about-license" data-i18n="ab.license">Código aberto sob a licença MIT.</p>
     </section>
@@ -2581,16 +2564,8 @@
   "ab.prefs": "Preferências",
   "ab.about": "Sobre",
   "ab.what": "Inventário de hardware de máquinas Linux por SSH, sem instalar nada nelas.",
-  "ab.author": "Criado por Lucas Motta, analista de sistemas e desenvolvedor.",
-  "ab.stack_app": "Programa",
-  "ab.stack_reports": "Relatórios",
-  "ab.stack_ui": "Interface",
-  "ab.stack_ui_value": "HTML, CSS e JavaScript, sem framework",
-  "ab.stack_window": "Janela",
-  "ab.stack_build": "Pacotes",
   "ab.repo": "Repositório no GitHub",
   "ab.issues": "Reportar um problema",
-  "ab.profile": "Perfil do autor",
   "ab.license": "Código aberto sob a licença MIT.",
   "footer.theme": "Tema",
   "theme.light": "Claro",
@@ -2874,16 +2849,8 @@
   "ab.prefs": "Preferences",
   "ab.about": "About",
   "ab.what": "Hardware inventory of Linux machines over SSH, without installing anything on them.",
-  "ab.author": "Created by Lucas Motta, systems analyst and developer.",
-  "ab.stack_app": "Program",
-  "ab.stack_reports": "Reports",
-  "ab.stack_ui": "Interface",
-  "ab.stack_ui_value": "HTML, CSS and JavaScript, no framework",
-  "ab.stack_window": "Window",
-  "ab.stack_build": "Packages",
   "ab.repo": "Repository on GitHub",
   "ab.issues": "Report a problem",
-  "ab.profile": "Author's profile",
   "ab.license": "Open source under the MIT license.",
   "footer.theme": "Theme",
   "theme.light": "Light",
@@ -3167,16 +3134,8 @@
   "ab.prefs": "Preferencias",
   "ab.about": "Acerca de",
   "ab.what": "Inventario de hardware de equipos Linux por SSH, sin instalar nada en ellos.",
-  "ab.author": "Creado por Lucas Motta, analista de sistemas y desarrollador.",
-  "ab.stack_app": "Programa",
-  "ab.stack_reports": "Informes",
-  "ab.stack_ui": "Interfaz",
-  "ab.stack_ui_value": "HTML, CSS y JavaScript, sin framework",
-  "ab.stack_window": "Ventana",
-  "ab.stack_build": "Paquetes",
   "ab.repo": "Repositorio en GitHub",
   "ab.issues": "Reportar un problema",
-  "ab.profile": "Perfil del autor",
   "ab.license": "Código abierto bajo la licencia MIT.",
   "footer.theme": "Tema",
   "theme.light": "Claro",
@@ -3523,7 +3482,6 @@
     }
     let line = tr("up.current", { v: appState.version || "" });
     if (available) line += " " + tr("up.available", { v: update.version });
-    else if (update.state === "latest") line += " " + tr("up.latest");
     else if (update.message) line += " " + update.message;
     document.getElementById("about-version-line").textContent = line;
     document.getElementById("about-version").textContent = tr("ab.version", { v: appState.version || "" });
