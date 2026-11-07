@@ -2335,6 +2335,7 @@
           <tr><td><code>LOCATION</code></td><td data-i18n="hp.no">Não</td><td data-i18n-html="hp.row_location"></td></tr>
           <tr><td><code>USER</code></td><td data-i18n="hp.no">Não</td><td data-i18n-html="hp.row_user"></td></tr>
           <tr><td><code>PASSWORD</code></td><td data-i18n="hp.no">Não</td><td data-i18n-html="hp.row_password"></td></tr>
+          <tr><td><code>SSH_PORT</code></td><td data-i18n="hp.no">Não</td><td data-i18n-html="hp.row_port"></td></tr>
           <tr><td data-i18n="hp.row_other_name">Qualquer outra</td><td data-i18n="hp.no">Não</td><td data-i18n-html="hp.row_other"></td></tr>
         </tbody>
       </table>
@@ -2640,6 +2641,10 @@
   "kv.gpu": "Placa de vídeo",
   "kv.adapters": "Adaptadores",
   "kv.coverage": "Cobertura dos dados",
+  "kv.ssh_port": "Porta SSH",
+  "ts.ports": "Porta SSH por máquina ({column}) em {n}; as demais usam a do painel SSH.",
+  "ts.invalid_ports": "Porta SSH inválida, linhas ignoradas",
+  "hp.row_port": "Porta SSH desta máquina, quando não é a do painel SSH. Também vale <code>PORT</code>, <code>PORTA</code> ou <code>PUERTO</code>. Linhas com porta inválida (fora de 1 a 65535) são ignoradas e listadas depois de carregar.",
   "kv.collected_at": "Coletado em",
   "in.slots_value": "{used} de {total} ocupados",
   "in.slots_partial": "{used} ocupado(s)",
@@ -2680,7 +2685,7 @@
   "hp.row_location": "Unidade ou local; agrupa a visão Parque. Também vale <code>LOCAL</code>, <code>UNIDADE</code>, <code>FILIAL</code> ou <code>SETOR</code>.",
   "hp.row_other_name": "Qualquer outra",
   "hp.row_other": "Copiada como está para a tabela e os relatórios, por exemplo <code>ASSET_TAG</code>, <code>OWNER</code> ou <code>NOTES</code>.",
-  "hp.row_user": "Usuário SSH desta máquina, quando ela não usa o do painel SSH. Também vale <code>USERNAME</code>, <code>LOGIN</code> ou <code>USUARIO</code>.",
+  "hp.row_user": "Usuário SSH desta máquina, quando ela não usa o do painel SSH. Também vale <code>SSH_USER</code>, <code>USERNAME</code>, <code>LOGIN</code> ou <code>USUARIO</code>.",
   "hp.row_password": "Senha SSH desta máquina, só para quem tem senhas diferentes por máquina; o normal é deixar a senha no painel SSH. Também vale <code>SENHA</code>. Fica só na memória e não vai para a tabela, relatórios nem snapshots, mas continua em texto puro no arquivo: guarde a planilha com cuidado.",
   "hp.sheet_p2": "Linhas sem IP e IPs repetidos são ignorados e aparecem no aviso depois de carregar. A porta SSH é 22 por padrão e pode ser trocada no painel SSH.",
   "hp.collected": "O que é coletado",
@@ -2906,6 +2911,10 @@
   "kv.gpu": "Graphics card",
   "kv.adapters": "Adapters",
   "kv.coverage": "Data coverage",
+  "kv.ssh_port": "SSH port",
+  "ts.ports": "Per-machine SSH port ({column}) for {n}; the rest use the SSH panel port.",
+  "ts.invalid_ports": "Invalid SSH port, rows skipped",
+  "hp.row_port": "SSH port for this machine when it is not the one in the SSH panel. <code>PORT</code>, <code>PORTA</code> or <code>PUERTO</code> also work. Rows with an invalid port (outside 1 to 65535) are skipped and listed after loading.",
   "kv.collected_at": "Collected on",
   "in.slots_value": "{used} of {total} populated",
   "in.slots_partial": "{used} populated",
@@ -2946,7 +2955,7 @@
   "hp.row_location": "Site or room; groups the Fleet view. <code>SITE</code> and <code>DEPARTMENT</code> also work.",
   "hp.row_other_name": "Any other",
   "hp.row_other": "Copied as is to the table and the reports, for example <code>ASSET_TAG</code>, <code>OWNER</code> or <code>NOTES</code>.",
-  "hp.row_user": "SSH user for this machine when it does not use the one in the SSH panel. <code>USERNAME</code>, <code>LOGIN</code> or <code>USUARIO</code> also work.",
+  "hp.row_user": "SSH user for this machine when it does not use the one in the SSH panel. <code>SSH_USER</code>, <code>USERNAME</code>, <code>LOGIN</code> or <code>USUARIO</code> also work.",
   "hp.row_password": "SSH password for this machine, only when machines have different passwords; normally the password goes in the SSH panel. <code>SENHA</code> also works. It stays in memory and never reaches the table, reports or snapshots, but it is plain text in the file: keep the spreadsheet safe.",
   "hp.sheet_p2": "Rows without an address and repeated addresses are skipped and listed after loading. The SSH port is 22 by default and can be changed in the SSH panel.",
   "hp.collected": "What is collected",
@@ -3172,6 +3181,10 @@
   "kv.gpu": "Tarjeta gráfica",
   "kv.adapters": "Adaptadores",
   "kv.coverage": "Cobertura de datos",
+  "kv.ssh_port": "Puerto SSH",
+  "ts.ports": "Puerto SSH por equipo ({column}) en {n}; los demás usan el del panel SSH.",
+  "ts.invalid_ports": "Puerto SSH no válido, filas omitidas",
+  "hp.row_port": "Puerto SSH de este equipo cuando no es el del panel SSH. También sirven <code>PORT</code>, <code>PORTA</code> o <code>PUERTO</code>. Las filas con un puerto no válido (fuera de 1 a 65535) se omiten y se listan al cargar.",
   "kv.collected_at": "Recopilado el",
   "in.slots_value": "{used} de {total} ocupadas",
   "in.slots_partial": "{used} ocupada(s)",
@@ -3212,7 +3225,7 @@
   "hp.row_location": "Sede o sala; agrupa la vista Parque. También valen <code>UBICACION</code>, <code>SEDE</code> o <code>SUCURSAL</code>.",
   "hp.row_other_name": "Cualquier otra",
   "hp.row_other": "Se copia tal cual a la tabla y los informes, por ejemplo <code>ASSET_TAG</code>, <code>OWNER</code> o <code>NOTES</code>.",
-  "hp.row_user": "Usuario SSH de este equipo cuando no usa el del panel SSH. También sirven <code>USERNAME</code>, <code>LOGIN</code> o <code>USUARIO</code>.",
+  "hp.row_user": "Usuario SSH de este equipo cuando no usa el del panel SSH. También sirven <code>SSH_USER</code>, <code>USERNAME</code>, <code>LOGIN</code> o <code>USUARIO</code>.",
   "hp.row_password": "Contraseña SSH de este equipo, solo cuando los equipos tienen contraseñas distintas; lo normal es dejarla en el panel SSH. También sirve <code>CONTRASENA</code>. Solo queda en memoria y no llega a la tabla, los informes ni las instantáneas, pero es texto plano en el archivo: guarde la hoja con cuidado.",
   "hp.sheet_p2": "Las filas sin dirección y las direcciones repetidas se omiten y se listan al cargar. El puerto SSH es 22 por defecto y se puede cambiar en el panel SSH.",
   "hp.collected": "Qué se recopila",
@@ -3574,6 +3587,12 @@
     if (info.duplicate_rows && info.duplicate_rows.length) {
       lines.push(`${tr("ts.duplicates")}: ${info.duplicate_rows.join(", ")}`);
     }
+    if (info.invalid_port_rows && info.invalid_port_rows.length) {
+      lines.push(`${tr("ts.invalid_ports")}: ${info.invalid_port_rows.join(", ")}`);
+    }
+    if (info.port_column) {
+      lines.push(tr("ts.ports", { column: `<code>${escapeHtml(info.port_column)}</code>`, n: info.hosts_with_port }));
+    }
     if (info.credential_columns && info.credential_columns.length) {
       lines.push(tr("ts.access", {
         columns: info.credential_columns.map(c => `<code>${escapeHtml(c)}</code>`).join(" "),
@@ -3800,6 +3819,13 @@
     return text.startsWith("Not detected") ? tr("in.physical") : text;
   }
 
+  // Collected records carry the port used; a pending one will use its row's port or the panel's.
+  function sshPortLabel(rec) {
+    if (rec.ssh_port) return String(rec.ssh_port);
+    const pending = classifyStatus(rec.status).group === "PENDING";
+    return pending ? String((appState.config || {}).ssh_port || 22) : "";
+  }
+
   function renderInspector(rec) {
     const pane = document.getElementById("inspector-pane");
     if (!rec) {
@@ -3830,7 +3856,7 @@
 
     if (cls.group !== "ONLINE") {
       const reason = cls.group === "PENDING" ? tr("in.waiting") : (cleanValue(rec.erro) || tr("in.no_error"));
-      pane.innerHTML = header + inspectorSection(tr("in.diagnosis"), multiline(reason));
+      pane.innerHTML = header + inspectorSection(tr("in.diagnosis"), multiline(reason) + kv(tr("kv.ssh_port"), sshPortLabel(rec)));
       return;
     }
 
@@ -3878,6 +3904,7 @@
       + inspectorSection(tr("in.network"), multiline(det.network_adapters) || kv(tr("kv.adapters"), ""))
       + inspectorSection(tr("in.collection"),
           kv(tr("kv.coverage"), det.coverage_percent)
+          + kv(tr("kv.ssh_port"), sshPortLabel(rec))
           + kv(tr("kv.collected_at"), collected.full));
   }
 
