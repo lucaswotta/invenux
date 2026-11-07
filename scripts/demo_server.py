@@ -51,17 +51,17 @@ PROFILES = [
 ]
 
 
-def fleet(language: str) -> list[dict]:
-    """24 machines: mostly online, a few powered off, one wrong password."""
+def fleet(language: str, count: int = 24) -> list[dict]:
+    """Fictional machines with unique documentation addresses or reserved names."""
     random.seed(7)
     machines = []
     locations = LOCATIONS[language]
-    for index in range(24):
+    for index in range(count):
         location = locations[0 if index < 6 else 1 if index < 14 else 2 if index < 21 else 3]
         profile = PROFILES[4] if location == locations[0] and index < 2 else PROFILES[index % 4]
         prefix = "srv" if profile is PROFILES[4] else "pos"
         machines.append({
-            "ip": f"192.0.2.{10 + index}",
+            "ip": f"192.0.2.{10 + index}" if index < 244 else f"host-{index + 1}.example",
             "hostname": f"{prefix}-{index + 1:02d}",
             "location": location,
             "asset": f"AT-{1040 + index}",
@@ -152,6 +152,7 @@ def shift_clock(modules, clock: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--machines", type=int, default=24)
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--language", choices=("en", "pt-br", "es"), default="en")
     parser.add_argument("--home", type=Path, help="Home folder to use (default: a new temporary one).")
@@ -172,7 +173,7 @@ def main() -> int:
     import snapshots
 
     shift_clock((core, reporting, snapshots), args.clock)
-    machines = fleet(args.language)
+    machines = fleet(args.language, args.machines)
     targets = home / {"en": "fleet.csv", "pt-br": "maquinas.csv", "es": "equipos.csv"}[args.language]
     write_targets(targets, machines)
     core.get_hardware_info = fake_collector(machines)

@@ -16,6 +16,21 @@ python build.py --console
 
 Windows PowerShell uses `.venv\\Scripts\\Activate.ps1` for activation.
 
+## Polling checks
+
+`node tests/test_polling_ui.mjs` checks incremental table updates using Node's
+standard library; no `node_modules` are needed. To check scrolling in a browser,
+run `python scripts/demo_server.py --machines 3000`, load the printed spreadsheet,
+and start collection with fictional SSH credentials.
+
+`GET /api/state` returns the complete state. `GET /api/state?since=<revision>`
+returns changed records keyed by `ip`; merge them unless `reset` is true, in
+which case replace the local records. Use the returned `revision` for the next
+request. `more` means more changes remain, including after `scanning` becomes
+false. Record batches target 120 KB before metadata; a single larger record is
+sent whole. Missing or obsolete revisions return the full state. Analytics are
+cached by revision, and snapshot history is refreshed after collection ends.
+
 ## Translations
 
 The interface catalog is the JSON block `<script id="i18n-catalog">` in `ui/index.html`, one object per language (`pt-br`, `en`, `es`) with the same keys. Messages generated in Python live in `i18n.py`, and report labels in `reporting.py` (`COLUMN_LABELS`, `REPORT_TEXT`, `DETAIL_TEXT`, `TEMPLATE_TEXT`). Tests fail when a language misses a key or the interface uses a key that is not in the catalog. To add a language, add it to all four places and to `SUPPORTED_LANGUAGES` in `i18n.py`.
