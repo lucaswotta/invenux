@@ -108,6 +108,7 @@ Get the file for your system from the [latest release](https://github.com/lucasw
 | Windows 10/11 (x86_64) | `invenux-<version>-windows-x86_64.exe` | Run it. SmartScreen warns about an unsigned program: **More info**, then **Run anyway**. |
 | macOS (Apple Silicon or Intel) | `invenux-<version>-macos-arm64.zip` or `-macos-x86_64.zip` | Unzip and open `Invenux.app`. The first time, right-click it and choose **Open**, because the app is not notarized. |
 | Linux (x86_64, glibc 2.35 or newer) | `invenux-<version>-linux-x86_64.tar.xz` | Extract and run `./install.sh` to add it to the application menu, or run `./invenux` from the folder. |
+| Debian, Ubuntu and derivatives (x86_64) | `invenux_<version>_amd64.deb` | `sudo apt install ./invenux_<version>_amd64.deb` installs it in `/opt/invenux` with the `invenux` command and a menu entry; `sudo apt remove invenux` removes it. |
 
 The packages are not code-signed; `SHA256SUMS` in the release lists the checksums. Each one opens its own window: WebView2 on Windows (part of Windows 10 and 11), WebKit on macOS and a bundled Qt WebEngine on Linux, which is why the Linux download is about 135 MB.
 

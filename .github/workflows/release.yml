@@ -85,6 +85,7 @@ jobs:
               cp brand/icons/invenux-256.png "$name/invenux.png"
               # xz keeps the Qt WebEngine runtime at about 135 MB instead of 185 MB with gzip.
               tar -cf - "$name" | xz -T0 -6 > "release/${name}.tar.xz"
+              sh packaging/linux/build_deb.sh "$name" "$version" release
               ;;
             Windows)
               cp "dist/invenux-v${version}.exe" "release/${name}.exe"
