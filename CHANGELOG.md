@@ -2,6 +2,30 @@
 
 Notable changes to Invenux (called Invent-SSH up to 0.5.0) are recorded here.
 
+## [1.0.0] — 2026-11-07
+
+### Added
+
+- ssh-agent and jump host: **Use the keys in ssh-agent** logs in with the agent's keys, and a bastion (host, port, user) is opened once per collection with one forwarded channel per machine. Host keys are checked, and remembered, for the bastion and for each machine. Command line: `--agent`, `--jump-host`, `--jump-port`, `--jump-user` (#32).
+- SSH port per machine: an `SSH_PORT` column (also `PORT`, `PORTA`, `PUERTO`) overrides the panel port for its row; the port used shows in the details and the reports, and rows with a port outside 1 to 65535 are skipped and listed (#31).
+- Snapshots: **Compare with** takes any other snapshot as the base, the CSV export carries both dates, a snapshot can be deleted, and a retention (last N snapshots or last N days) runs after each collection and keeps the newest (#34).
+- `--report-changes FILE` writes the hardware changes since the previous snapshot after a command-line collection; the file is empty when nothing changed, for cron, systemd timers and Task Scheduler (#35).
+- Memory slots for non-root users: when plain `dmidecode` shows no devices, the probe tries `sudo -n dmidecode -t memory`, which never prompts. `dmidecode` is also found in `/usr/sbin` and `/sbin` (#33).
+- Native file dialog on Windows and macOS (pywebview, then PowerShell or `osascript`), so Choose spreadsheet keeps the original path instead of an uploaded copy (#36). Not run on Windows or macOS yet (#38).
+- `invenux_<version>_amd64.deb` next to the Linux `.tar.xz`, installed in `/opt/invenux` with the `invenux` command and a menu entry (#37). The release job and an `apt` install were not run yet (#38).
+
+### Changed
+
+- During a scan the interface asks only for the records that changed (#29).
+
+### Fixed
+
+- Keyboard and screen reader: rows take focus and move with the arrow keys, sheets trap focus and give it back, the status banner is a live region, icon-only controls have labels in the three languages, text and button colors reach 4.5:1 in both themes, and the toolbar wraps below 680 px (#30).
+- Pressing Enter in the spreadsheet path field reloads the same path, so an edited spreadsheet can be read again (#30).
+- After a page reload the SSH password was erased when starting a collection, which failed with a missing-password error; it is now sent only when the field was edited (#30).
+- Virtual disks are classified as Virtual (#28).
+- `LICENSE` is the English MIT text, so GitHub detects it; the Portuguese text is in `LICENSE.pt-BR.md` (#27).
+
 ## [0.9.2] — 2026-10-20
 
 ### Added

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build invenux_<version>_amd64.deb from an extracted release folder (the one that
 # holds invenux, _internal, invenux.desktop and invenux.png).
-#   sh packaging/linux/build_deb.sh invenux-0.9.2-linux-x86_64 0.9.2 release
+#   sh packaging/linux/build_deb.sh invenux-1.0.0-linux-x86_64 1.0.0 release
 # The program goes to /opt/invenux, with /usr/bin/invenux, a menu entry and the icon;
 # `sudo apt remove invenux` removes them and keeps each user's history and reports.
 set -eu

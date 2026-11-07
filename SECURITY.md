@@ -12,6 +12,8 @@ For a suspected vulnerability, contact the maintainer privately through the cont
 - Hardware collection is designed to be read-only; it uses SSH and system-information commands.
 - SSH host keys use trust on first use (`trust_unknown_hosts`, on by default): an unknown key is accepted once and stored in the app `known_hosts`; a later key change is rejected. The first connection to each host is not protected against machine-in-the-middle attacks. Turn the option off in the SSH panel to accept only keys already in `known_hosts`.
 - The local interface listens only on `127.0.0.1`, requires a per-process token and rejects requests whose `Host` is not `127.0.0.1` or `localhost`.
+- With a jump host, host keys are checked, and remembered under trust on first use, for the bastion and for every machine behind it. `ssh-agent` keys are used through the agent; Invenux never reads the private key material.
+- When plain `dmidecode` shows no memory devices, the probe tries `sudo -n dmidecode -t memory`, which never prompts; sudo on the target logs that attempt.
 - The SSH password is not saved by the application. The UI may remember the SSH username and private-key path in local configuration.
 - Reports and logs may contain infrastructure identifiers and should be protected appropriately.
 - Spreadsheet exports neutralize formula-like values; HTML exports escape target-provided and user-supplied fields.

@@ -23,17 +23,17 @@ app.py (InventoryController + local HTTP/JSON server + native WebView/browser sh
 
 ## Modules
 
-- `app.py`: `InventoryController`, local `ThreadingHTTPServer` bound to `127.0.0.1` with per-session token verification (`X-Invenux-Token`), CLI runner, and desktop window launcher (`pywebview`, `Gtk 3.0` + `WebKit2`, or browser). Release packages carry pywebview: WebView2 on Windows, WebKit on macOS and Qt WebEngine (PySide6) on Linux; `scripts/smoke_window.py` checks in CI that each package opens its own window (on Linux, through DevTools, that the UI loads in it).
+- `app.py`: `InventoryController`, local `ThreadingHTTPServer` bound to `127.0.0.1` with per-session token verification (`X-Invenux-Token`), CLI runner, and desktop window launcher (`pywebview`, `Gtk 3.0` + `WebKit2`, or browser) and the file dialog (`zenity`/`kdialog` on Linux; the pywebview dialog, then PowerShell or `osascript`, on Windows and macOS). Release packages carry pywebview: WebView2 on Windows, WebKit on macOS and Qt WebEngine (PySide6) on Linux; `scripts/smoke_window.py` checks in CI that each package opens its own window (on Linux, through DevTools, that the UI loads in it).
 - `ui/index.html`: Single-page interface with three views (Collection, Fleet, Snapshots), popovers (Targets, SSH, Export), the hardware inspector, the help sheet with the spreadsheet tutorial, and its pt-BR/en/es catalog as an embedded JSON block.
 - `core.py`: Streaming `.xlsx`/`.xlsm`/`.csv` target loader, `Terminal` dataclass, bounded worker pool (`max_workers`), consecutive-failure circuit breaker, and event queue emission.
-- `inspector.py`: SSH connection lifecycle and read-only POSIX shell probe (`_PROBE_SCRIPT`) reading `/etc/os-release`, `uname`, `lscpu`, `/proc/cpuinfo`, `/proc/meminfo`, `dmidecode -t memory`, `lsblk`, `df`, `/sys/class/dmi/id`, `lspci`, `/sys/class/drm`, `/sys/class/net`, `ip`, `ps`, package managers, `/proc/uptime`, and `systemd-detect-virt`.
+- `inspector.py`: SSH connection lifecycle (password, key file or `ssh-agent`, optional `JumpHost` reached once per collection with one `direct-tcpip` channel per machine) and read-only POSIX shell probe (`_PROBE_SCRIPT`) reading `/etc/os-release`, `uname`, `lscpu`, `/proc/cpuinfo`, `/proc/meminfo`, `dmidecode -t memory` (falling back to `sudo -n`), `lsblk`, `df`, `/sys/class/dmi/id`, `lspci`, `/sys/class/drm`, `/sys/class/net`, `ip`, `ps`, package managers, `/proc/uptime`, and `systemd-detect-virt`.
 - `snapshots.py`: `SnapshotStore` backed by `sqlite3` (`snapshots.db`), field-by-field diff engine (`compute_records_diff`), and neutral distribution aggregator (`compute_fleet_analytics`).
 - `reporting.py`: Report exporter for `.xlsx`, `.csv`, and `.html`, plus `.xlsx` target template generator (`create_template_workbook`).
 - `paths.py`: OS-appropriate user directories for configuration, logs, known hosts, SQLite snapshots, and exported reports.
 - `i18n.py`: Messages generated in Python, in `pt-br`, `en` and `es`, and the system-language detection.
 - `build.py`: Native `PyInstaller` packaging script.
 - `scripts/`: `render_brand.py` (icons, wordmarks, social preview), `demo_server.py` and `capture_media.mjs` (README media from a fictional fleet).
-- `brand/`: icon sources (`icon.svg`, `icon-small.svg`), rendered icons, `.ico`, `.icns`, social preview; `packaging/linux/invenux.desktop` and `packaging/linux/install.sh` (per-user install from the release folder).
+- `brand/`: icon sources (`icon.svg`, `icon-small.svg`), rendered icons, `.ico`, `.icns`, social preview; `packaging/linux/invenux.desktop` and `packaging/linux/install.sh` (per-user install from the release folder) and `packaging/linux/build_deb.sh` (the `.deb` built from the same folder).
 
 ## Security Boundaries
 
