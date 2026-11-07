@@ -23,7 +23,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from queue import Empty, Queue
 from typing import Any, Callable
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from core import InventoryEngine
 from i18n import SUPPORTED_LANGUAGES, format_decimal, get_language, set_language, system_language, t
@@ -119,6 +119,12 @@ class InventoryController:
         self.update_info: dict[str, Any] = {"state": "idle"}
         self.active_engine: InventoryEngine | None = None
         self._bootstrap_initial_records()
+        self.revision = 0
+        self.reset_revision = 0
+        self.record_revisions: dict[str, int] = {}
+        self.analytics_revision = -1
+        self.analytics: dict[str, Any] = {}
+        self.snapshots = self.snapshot_store.list_snapshots(limit=50)
 
     def _load_config(self) -> dict[str, Any]:
         defaults: dict[str, Any] = {
@@ -247,31 +253,62 @@ class InventoryController:
         cfg["has_password"] = bool(self.config.get("ssh_pass"))
         return cfg
 
-    def get_state(self) -> dict[str, Any]:
+    def _reset_records(self) -> None:
+        self.revision += 1
+        self.reset_revision = self.revision
+        self.record_revisions.clear()
+
+    def get_state(self, since: int | None = None) -> dict[str, Any]:
         with self.lock:
-            records_copy = list(self.records)
-            scanning = self.scanning
-            status_text = self.status_text
-            cfg = self.public_config()
-            update_info = dict(self.update_info)
-        return {
-            "version": APP_VERSION,
-            "update": update_info,
-            "config": cfg,
-            "records": records_copy,
-            "analytics": compute_fleet_analytics(records_copy),
-            "snapshots": self.snapshot_store.list_snapshots(limit=50),
-            "scanning": scanning,
-            "status_text": status_text,
-            "targets_info": dict(self.targets_info),
-            "paths": {
-                "home": str(Path.home()),
-                "reports": str(get_reports_dir()),
-                "documents": str(get_documents_dir()),
-                "data": str(get_user_data_dir()),
-                "logs": str(get_logs_dir()),
-            },
-        }
+            reset = since is None or not self.reset_revision <= since <= self.revision
+            records = list(self.records)
+            revision = self.revision
+            more = False
+            if not reset:
+                changed = sorted(
+                    (self.record_revisions.get(str(record.get("ip")), 0), index)
+                    for index, record in enumerate(records)
+                    if self.record_revisions.get(str(record.get("ip")), 0) > since
+                )
+                batch = []
+                size = 0
+                for record_revision, index in changed:
+                    record = records[index]
+                    record_size = len(json.dumps(record, ensure_ascii=False).encode("utf-8"))
+                    if batch and size + record_size > 120_000:
+                        more = True
+                        break
+                    batch.append(record)
+                    size += record_size
+                    revision = record_revision
+                records = batch
+            state = {
+                "version": APP_VERSION,
+                "update": dict(self.update_info),
+                "config": self.public_config(),
+                "records": records,
+                "revision": revision,
+                "reset": reset,
+                "more": more,
+                "scanning": self.scanning,
+                "status_text": self.status_text,
+                "targets_info": dict(self.targets_info),
+                "paths": {
+                    "home": str(Path.home()),
+                    "reports": str(get_reports_dir()),
+                    "documents": str(get_documents_dir()),
+                    "data": str(get_user_data_dir()),
+                    "logs": str(get_logs_dir()),
+                },
+            }
+            if reset or (since != self.revision and not more):
+                if self.analytics_revision != self.revision:
+                    self.analytics = compute_fleet_analytics(self.records)
+                    self.analytics_revision = self.revision
+                state["analytics"] = self.analytics
+            if since is None or not self.scanning:
+                state["snapshots"] = self.snapshots
+            return state
 
     def check_for_update(self) -> dict[str, Any]:
         try:
@@ -345,6 +382,7 @@ class InventoryController:
             self.config["filepath"] = str(resolved)
             self._persist_non_secret_config()
             self.records = [_serialize_record(asdict(term)) for term in terminals]
+            self._reset_records()
             self.targets_info = {"filename": resolved.name, "count": len(terminals), **summary}
             self.status_text = t("app_targets_loaded", count=len(self.records), filename=resolved.name)
             if notes:
@@ -410,6 +448,7 @@ class InventoryController:
             raise ValueError(t("app_snapshot_not_found", snapshot_id=snapshot_id))
         with self.lock:
             self.records = list(snap.get("records", []))
+            self._reset_records()
             self.status_text = t("app_viewing_snapshot", created_at=snap["created_at"])
         return self.get_state()
 
@@ -439,6 +478,7 @@ class InventoryController:
             _check_access(terminals, engine.credentials, ssh_user, bool(ssh_key or ssh_pass))
 
             self.records = [_serialize_record(asdict(term)) for term in terminals]
+            self._reset_records()
             self.scanning = True
             self.active_engine = engine
             self.status_text = t("app_collecting", done=0, total=len(self.records), percent=format_decimal(0))
@@ -487,7 +527,10 @@ class InventoryController:
                     if idx is not None and idx < len(self.records):
                         self.records[idx] = serialized
                     else:
+                        index_by_ip[ip] = len(self.records)
                         self.records.append(serialized)
+                    self.revision += 1
+                    self.record_revisions[ip] = self.revision
                     self.status_text = t(
                         "app_collecting", done=processed, total=total, percent=format_decimal(pct)
                     )
@@ -497,8 +540,6 @@ class InventoryController:
         with self.lock:
             final_records = [dict(r) for r in self.records if str(r.get("status", "")).upper() != "PENDING"]
             all_records = list(self.records)
-            self.scanning = False
-            self.active_engine = None
 
             online = sum(str(r.get("status", "")).upper() == "ONLINE" for r in all_records)
             avail = round((online / len(all_records)) * 100, 1) if all_records else 0.0
@@ -511,8 +552,14 @@ class InventoryController:
                     source_name=source_name,
                     duration_seconds=elapsed,
                 )
+                with self.lock:
+                    self.snapshots = self.snapshot_store.list_snapshots(limit=50)
             except Exception:
                 logging.getLogger(__name__).warning("Failed to save local snapshot", exc_info=True)
+
+        with self.lock:
+            self.scanning = False
+            self.active_engine = None
 
 
 def _valid_port(value: Any) -> int:
@@ -651,7 +698,15 @@ def create_http_server(
                 return
 
             if path == "/api/state":
-                self._send_json(controller.get_state())
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                try:
+                    since = int(query["since"][0]) if "since" in query else None
+                    if since is not None and since < 0:
+                        raise ValueError
+                except ValueError:
+                    self._send_json({"error": "Invalid revision"}, status=HTTPStatus.BAD_REQUEST)
+                    return
+                self._send_json(controller.get_state(since))
                 return
 
             if path == "/api/ping":

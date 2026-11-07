@@ -3360,6 +3360,7 @@
   let appState = {
     config: {},
     records: [],
+    revision: null,
     analytics: null,
     snapshots: [],
     selectedSnapshotId: null,
@@ -3696,9 +3697,28 @@
       appState.selectedHostIp = filtered[0].ip;
     }
 
-    tbody.innerHTML = filtered.map(r => {
+    const rows = new Map(Array.from(tbody.querySelectorAll("tr[data-ip]"), row => [row.dataset.ip, row]));
+    if (!rows.size) tbody.replaceChildren();
+    const visible = new Set(filtered.map(r => r.ip));
+    for (const [ip, row] of rows) {
+      if (!visible.has(ip)) row.remove();
+    }
+    let previous = null;
+    for (const r of filtered) {
+      let row = rows.get(r.ip);
+      if (!row) {
+        row = document.createElement("tr");
+        row.dataset.ip = r.ip;
+        row.onclick = () => selectHost(row.dataset.ip);
+      }
+      const next = previous ? previous.nextSibling : tbody.firstChild;
+      if (next !== row) tbody.insertBefore(row, next);
+      previous = row;
+      row.classList.toggle("selected", r.ip === appState.selectedHostIp);
+      if (row.record === r && row.language === currentLang) continue;
+      row.record = r;
+      row.language = currentLang;
       const cls = classifyStatus(r.status);
-      const selected = r.ip === appState.selectedHostIp ? "selected" : "";
       const hostname = hostHostname(r);
       const location = hostLocation(r);
       const cpu = cleanValue(r.processador)
@@ -3712,7 +3732,7 @@
         ? `${cleanValue(r.distro)}${cleanValue(r.kernel) ? ` (${cleanValue(r.kernel).split("-")[0]})` : ""}`
         : "—";
 
-      return `<tr class="${selected}" data-ip="${escapeHtml(r.ip)}" onclick="selectHost(this.dataset.ip)">
+      row.innerHTML = `
         <td><span class="status-cell"><span class="dot ${cls.dot}"></span>${escapeHtml(cls.label)}</span></td>
         <td>${escapeHtml(r.ip)}</td>
         <td>${escapeHtml(hostname)}</td>
@@ -3721,8 +3741,8 @@
         <td>${escapeHtml(ram)}</td>
         <td>${escapeHtml(storage)}</td>
         <td class="cell-secondary">${escapeHtml(osText)}</td>
-      </tr>`;
-    }).join("");
+      `;
+    }
 
     const selectedRecord = records.find(r => r.ip === appState.selectedHostIp) || filtered[0];
     renderInspector(selectedRecord);
@@ -4144,23 +4164,29 @@
   }
 
   function startPolling() {
-    if (pollTimer) clearInterval(pollTimer);
-    pollTimer = setInterval(async () => {
+    if (pollTimer) clearTimeout(pollTimer);
+    const poll = async () => {
       try {
-        const data = await api("/api/state");
+        const data = await api(`/api/state?since=${appState.revision}`);
         applyServerState(data);
-        if (!data.scanning) {
-          clearInterval(pollTimer);
+        if (!data.scanning && !data.more) {
           pollTimer = null;
           if (data.snapshots && data.snapshots.length) {
             selectSnapshot(data.snapshots[0].id);
           }
+          return;
         }
-      } catch (_) {}
-    }, 350);
+      } catch (err) {
+        setBanner(err.message);
+      }
+      pollTimer = setTimeout(poll, 350);
+    };
+    pollTimer = setTimeout(poll, 350);
   }
 
   function applyServerState(data) {
+    if (data.revision !== undefined && appState.revision !== null && data.revision < appState.revision) return;
+    if (data.revision !== undefined) appState.revision = data.revision;
     if (data.config) {
       appState.config = data.config;
       if (data.config.language && data.config.language !== currentLang) {
@@ -4188,7 +4214,20 @@
       }
     }
     if (Array.isArray(data.records)) {
-      appState.records = data.records;
+      if (data.reset === false) {
+        const indexes = new Map(appState.records.map((record, index) => [record.ip, index]));
+        for (const record of data.records) {
+          const index = indexes.get(record.ip);
+          if (index === undefined) {
+            indexes.set(record.ip, appState.records.length);
+            appState.records.push(record);
+          } else {
+            appState.records[index] = record;
+          }
+        }
+      } else {
+        appState.records = data.records;
+      }
     }
     if (data.analytics) {
       appState.analytics = data.analytics;
@@ -4225,9 +4264,9 @@
     }
 
     updateToolbarAndFooter();
-    renderScanTable();
-    renderDashboard();
-    renderSnapshots();
+    if (data.reset !== false || data.records?.length) renderScanTable();
+    if (data.analytics) renderDashboard();
+    if (data.snapshots) renderSnapshots();
   }
 
   window.addEventListener("DOMContentLoaded", async () => {
