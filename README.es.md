@@ -59,7 +59,7 @@ Sin agente y de solo lectura: no se instala ni se escribe nada en los equipos.
 | **Sistema** | Distribución, versión y nombre en clave, kernel, arquitectura, hostname, entorno gráfico y servidor de vídeo, pantallas, cantidad de paquetes, init, zona horaria, tiempo encendido, uso del disco `/`. |
 | **Hardware** | Fabricante y modelo, placa base, BIOS, procesador con núcleos, hilos y frecuencia, cada ranura de memoria (tamaño, tipo, velocidad, modelo del módulo) y el máximo de la placa, cada disco y partición, vídeo, adaptadores de red con IPv4 y MAC. |
 | **Parque** | Tipos de almacenamiento, capacidad de memoria y distribuciones Linux de los equipos accesibles, y el desglose por ubicación. |
-| **Instantáneas** | Historial local de cada recopilación con comparación campo a campo, exportable a CSV. |
+| **Instantáneas** | Historial local de cada recopilación con comparación campo a campo con la anterior o con cualquier otra (**Comparar con**), exportable a CSV con ambas fechas. Elimine una instantánea (pide confirmación) o fije la retención en Acerca de y ajustes (conservar las últimas N, o las de los últimos N días; se aplica al terminar cada recopilación y la más reciente siempre se conserva). |
 | **Exportación** | Excel (resumen con barras de proporción, inventario agrupado por tema), HTML interactivo que funciona sin conexión, CSV protegido contra fórmulas. |
 | **Interfaz** | Español, inglés y portugués, según el idioma del sistema; guía integrada con tutorial animado; redimensionable hasta 720 × 520. |
 | **Escritorio** | Ventana nativa en Linux, Windows y macOS (pywebview o GTK), o el navegador; paquetes listos para los tres sistemas; ventana Acerca de y ajustes (pie de la barra lateral o el nombre de la app) con idioma, tema claro u oscuro, la versión y actualización con un clic cuando sale una versión nueva. |
@@ -151,6 +151,41 @@ python3 app.py --input equipos.xlsx --user inventario --key ~/.ssh/id_ed25519 --
 python3 app.py --input equipos.xlsx --user inventario --ask-password
 ```
 
+### Recopilaciones programadas
+
+`--report-changes ARCHIVO` hace que una recopilación por línea de comandos también escriba los cambios de hardware (procesador, memoria, almacenamiento, placa base) respecto a la instantánea anterior, de los equipos que estaban en línea en ambas. Los cambios de estado, sistema y kernel quedan fuera, y el archivo queda vacío (0 bytes) cuando nada cambió, para que el programador actúe solo cuando tenga contenido. Cada recopilación guarda una instantánea que aparece en la vista Instantáneas. Use una clave, porque no hay nadie para escribir la contraseña; los ejemplos usan la instalación Linux (`~/.local/bin/invenux`), y `python3 /ruta/a/invenux/app.py` funciona igual desde el código.
+
+cron (cada lunes a las 07:00, envía los cambios por correo cuando los hay):
+
+```sh
+0 7 * * 1 $HOME/.local/bin/invenux --input $HOME/inventario/equipos.xlsx --user inventario --key $HOME/.ssh/id_ed25519 --report-changes $HOME/inventario/cambios.csv && [ -s $HOME/inventario/cambios.csv ] && mail -s "Cambios de hardware" admin@example.com < $HOME/inventario/cambios.csv
+```
+
+Temporizador de systemd (`~/.config/systemd/user/invenux.service` e `invenux.timer`, luego `systemctl --user enable --now invenux.timer`):
+
+```ini
+# invenux.service
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/invenux --input %h/inventario/equipos.xlsx --user inventario --key %h/.ssh/id_ed25519 --report-changes %h/inventario/cambios.csv
+
+# invenux.timer
+[Timer]
+OnCalendar=Mon 07:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Programador de tareas de Windows (PowerShell, cada lunes a las 07:00):
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "C:\Herramientas\invenux.exe" -Argument '--input C:\Inventario\equipos.xlsx --user inventario --key C:\Users\yo\.ssh\id_ed25519 --report-changes C:\Inventario\cambios.csv'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 7am
+Register-ScheduledTask -TaskName "Inventario Invenux" -Action $action -Trigger $trigger
+```
+
 ## La hoja
 
 `.xlsx`, `.xlsm` o `.csv` (coma o punto y coma). La primera fila es el encabezado y cada fila siguiente es un equipo.
@@ -181,7 +216,7 @@ Una conexión SSH por equipo ejecuta un único script de shell POSIX que lee:
 | `/sys/class/net`, `ip` | Adaptadores de red, velocidad, driver, IPv4, MAC |
 | `dpkg`, `rpm`, `pacman`, `apk`, `/etc/timezone` | Paquetes instalados, zona horaria |
 
-Las ranuras de memoria requieren root (`dmidecode`); sin root, esos campos aparecen como no disponibles y el resto se recopila igual. El número de serie solo se recopila con `include_sensitive_identifiers` activado en el archivo de configuración.
+Las ranuras de memoria requieren root (`dmidecode`). Un usuario que no es root las obtiene cuando sudo le permite ejecutar `dmidecode` sin contraseña (por ejemplo `inventario ALL=(root) NOPASSWD: /usr/sbin/dmidecode` en `/etc/sudoers.d/`): la sonda ejecuta entonces `sudo -n dmidecode -t memory`, que nunca pide contraseña y falla al instante sin esa regla. Sin ninguno de los dos, esos campos aparecen como no disponibles y el resto se recopila igual. `Fuentes de la recopilación` en los informes indica si las ranuras salieron de `dmidecode`, de `sudo -n dmidecode` o no estuvieron disponibles. Ese intento de sudo queda en el registro de sudo del equipo como cualquier otro, y un usuario fuera de sudoers puede generar el aviso de sudo al administrador. El número de serie solo se recopila con `include_sensitive_identifiers` activado en el archivo de configuración.
 
 ## Dónde se guardan los archivos
 
@@ -209,7 +244,7 @@ Las vulnerabilidades se reportan en privado, vea [SECURITY.md](SECURITY.md).
 No. El script solo lee archivos y ejecuta comandos de lectura. No escribe nada, ni siquiera en `/tmp`.
 
 **¿Por qué todos mis equipos muestran un solo módulo de memoria?**
-Mire la línea **Ranuras** en los detalles del equipo: muestra cuántas ranuras están ocupadas del total de la placa, con cada módulo listado. Si aparece no disponible, el usuario SSH no es root y `dmidecode` no pudo ejecutarse.
+Mire la línea **Ranuras** en los detalles del equipo: muestra cuántas ranuras están ocupadas del total de la placa, con cada módulo listado. Si aparece no disponible, el usuario SSH no es root y no tiene una regla de sudo sin contraseña para `dmidecode`, vea [Qué se recopila](#qué-se-recopila).
 
 **Un equipo aparece Sin conexión, pero está encendido.**
 La fila indica el motivo. "No respondió en la red" significa ninguna respuesta en unos 3 segundos (normalmente apagado o dirección incorrecta); "Conexión rechazada en el puerto N" significa que está encendido, pero el SSH está detenido, bloqueado o en otro puerto (ajústelo en el panel SSH); "Sin respuesta en N s" indica un cortafuegos o una red lenta, así que aumente el tiempo límite en el panel SSH.
@@ -229,7 +264,7 @@ Sí, vea la línea de comandos arriba. Requiere clave privada.
 ## Limitaciones
 
 - Los destinos deben ser Linux con SSH.
-- Los detalles de las ranuras de memoria requieren root en el destino.
+- Los detalles de las ranuras de memoria requieren root o sudo sin contraseña para `dmidecode` en el destino.
 - El tipo de almacenamiento identifica discos virtuales por modelo/fabricante/nombre o por un hipervisor detectado. La detección de hipervisor también clasifica los discos pasados a la VM como Virtual. Los demás discos usan nombre/transporte NVMe y el indicador de rotación del kernel; el medio no rotativo incluye memoria flash USB.
 - La línea de comandos solo acepta clave privada, no contraseña.
 

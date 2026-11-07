@@ -5,7 +5,7 @@ import json
 import re
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterator, Mapping, Sequence
 
@@ -132,6 +132,27 @@ def compute_records_diff(
                     "current_value": after,
                 })
     return changes
+
+
+HARDWARE_FIELDS = frozenset({"processador", "ram", "disk_type", "disk_size", "placa_mae"})
+
+
+def compute_hardware_changes(
+    previous_records: Sequence[Mapping[str, Any]],
+    current_records: Sequence[Mapping[str, Any]],
+) -> list[dict[str, str]]:
+    """Hardware fields that changed on machines collected in both snapshots.
+
+    A machine that was off in either run has no hardware values to compare, and
+    status, system and kernel changes are not hardware.
+    """
+    def online(records: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+        return [record for record in records if str(record.get("status", "")).upper() == "ONLINE"]
+
+    return [
+        change for change in compute_records_diff(online(previous_records), online(current_records))
+        if change["field_key"] in HARDWARE_FIELDS
+    ]
 
 
 def compute_fleet_analytics(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -379,6 +400,61 @@ class SnapshotStore:
             data["records"] = []
         return data
 
+    def delete_snapshots(self, snapshot_ids: Sequence[int]) -> list[int]:
+        """Delete snapshots; the next survivor's change count is redone against its new predecessor."""
+        ids = sorted({int(value) for value in snapshot_ids})
+        if not ids:
+            return []
+        with self._connect() as conn:
+            marks = ",".join("?" * len(ids))
+            deleted = [row["id"] for row in conn.execute(f"SELECT id FROM snapshots WHERE id IN ({marks})", ids)]
+            if not deleted:
+                return []
+            conn.execute(f"DELETE FROM snapshots WHERE id IN ({marks})", ids)
+            followers = {
+                row["id"]
+                for deleted_id in deleted
+                for row in conn.execute("SELECT id FROM snapshots WHERE id > ? ORDER BY id LIMIT 1", (deleted_id,))
+            }
+            for follower in sorted(followers):
+                current = conn.execute("SELECT records_json FROM snapshots WHERE id = ?", (follower,)).fetchone()
+                previous = conn.execute(
+                    "SELECT records_json FROM snapshots WHERE id < ? ORDER BY id DESC LIMIT 1", (follower,)
+                ).fetchone()
+                count = 0
+                if previous is not None:
+                    try:
+                        count = len(compute_records_diff(json.loads(previous["records_json"]), json.loads(current["records_json"])))
+                    except (json.JSONDecodeError, TypeError):
+                        count = 0
+                conn.execute("UPDATE snapshots SET changes_count = ? WHERE id = ?", (count, follower))
+        return deleted
+
+    def prune(self, keep_last: int = 0, keep_days: int = 0, now: datetime | None = None) -> list[int]:
+        """Apply retention: a snapshot goes when it is beyond the newest keep_last or older than
+        keep_days; 0 turns a rule off. The newest snapshot always stays, so a long pause between
+        collections never empties the history.
+        """
+        keep_last = max(0, int(keep_last or 0))
+        keep_days = max(0, int(keep_days or 0))
+        if not keep_last and not keep_days:
+            return []
+        with self._connect() as conn:
+            rows = conn.execute("SELECT id, created_at FROM snapshots ORDER BY id DESC").fetchall()
+        cutoff = (now or datetime.now()) - timedelta(days=keep_days) if keep_days else None
+        doomed = []
+        for position, row in enumerate(rows):
+            if position == 0:
+                continue
+            too_many = bool(keep_last) and position >= keep_last
+            try:
+                too_old = cutoff is not None and datetime.fromisoformat(row["created_at"]) < cutoff
+            except ValueError:
+                too_old = False
+            if too_many or too_old:
+                doomed.append(row["id"])
+        return self.delete_snapshots(doomed)
+
     def compute_diff(self, snapshot_id: int, base_snapshot_id: int | None = None) -> dict[str, Any]:
         current = self.get_snapshot(snapshot_id)
         if current is None:
@@ -387,6 +463,8 @@ class SnapshotStore:
         base: dict[str, Any] | None = None
         if base_snapshot_id is not None:
             base = self.get_snapshot(base_snapshot_id)
+            if base is None:
+                raise ValueError(f"Snapshot {base_snapshot_id} not found.")
         else:
             with self._connect() as conn:
                 prev_row = conn.execute(
