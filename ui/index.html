@@ -2087,7 +2087,7 @@
       </div>
       <div class="field-group">
         <label class="field-label" for="input-ssh-pass" data-i18n="sp.pass">Senha SSH (opcional)</label>
-        <input id="input-ssh-pass" class="field-input" type="password" data-i18n-placeholder="sp.pass_ph" oninput="syncSshSettings()">
+        <input id="input-ssh-pass" class="field-input" type="password" data-i18n-placeholder="sp.pass_ph" oninput="this.dataset.edited = '1'; syncSshSettings()">
       </div>
       <div class="field-row">
         <div class="field-group">
@@ -3738,7 +3738,7 @@
 
     const user = (document.getElementById("input-ssh-user").value || cfg.ssh_user || "").trim();
     const keyPath = (document.getElementById("input-ssh-key").value || cfg.ssh_key_path || "").trim();
-    const hasPass = Boolean(document.getElementById("input-ssh-pass").value);
+    const hasPass = Boolean(document.getElementById("input-ssh-pass").value || cfg.has_password);
     let authLabel = tr("tb.ssh_configure");
     if (keyPath) {
       authLabel = tr("tb.ssh_key", { name: keyPath.split(/[\\/]/).pop() });
@@ -3759,18 +3759,22 @@
   }
 
   async function syncSshSettings() {
+    const passInput = document.getElementById("input-ssh-pass");
     const payload = {
       ssh_user: document.getElementById("input-ssh-user").value.trim(),
       ssh_key_path: document.getElementById("input-ssh-key").value.trim(),
-      ssh_pass: document.getElementById("input-ssh-pass").value,
       max_workers: parseInt(document.getElementById("input-workers").value || "32", 10),
       ssh_timeout: parseInt(document.getElementById("input-timeout").value || "15", 10),
       ssh_port: parseInt(document.getElementById("input-ssh-port").value || "22", 10),
       trust_unknown_hosts: document.getElementById("input-tofu").checked
     };
+    // After a reload the field is empty while the server still holds the password; only a
+    // typed change (including clearing it) replaces it.
+    if (passInput.dataset.edited) payload.ssh_pass = passInput.value;
     updateToolbarAndFooter();
     try {
-      await api("/api/config", "POST", payload);
+      const res = await api("/api/config", "POST", payload);
+      appState.config = res.config;
     } catch (_) {}
   }
 
