@@ -495,6 +495,28 @@ def save_snapshot_diff(
     _write_csv(path, list(headers), rows)
     return path
 
+def save_change_report(changes: Sequence[Mapping[str, Any]], path: str | Path, language: str = "en") -> Path:
+    """Write the changes of a scheduled run; the file is empty (0 bytes) when nothing changed.
+
+    An empty file lets a scheduler test it with `[ -s file ]` or Length -gt 0.
+    """
+    language = report_language(language)
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not changes:
+        target.write_bytes(b"")
+        return target
+    headers = _DIFF_HEADERS[language]
+    rows = []
+    for change in changes:
+        field_label = _DIFF_FIELD_LABELS.get(str(change.get("field_key")))
+        field = COLUMN_LABELS[language][field_label] if field_label else _value(change.get("field"))
+        values = (change.get("ip"), change.get("hostname"), field, change.get("previous_value"), change.get("current_value"))
+        rows.append({header: _value(value) for header, value in zip(headers, values)})
+    _write_csv(target, list(headers), rows)
+    return target
+
+
 def _write_csv(path: Path, columns: Sequence[str], rows: Sequence[Mapping[str, str]]) -> None:
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(columns), delimiter=";", extrasaction="ignore")

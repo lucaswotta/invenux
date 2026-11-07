@@ -151,6 +151,41 @@ python3 app.py --input equipos.xlsx --user inventario --key ~/.ssh/id_ed25519 --
 python3 app.py --input equipos.xlsx --user inventario --ask-password
 ```
 
+### Recopilaciones programadas
+
+`--report-changes ARCHIVO` hace que una recopilación por línea de comandos también escriba los cambios de hardware (procesador, memoria, almacenamiento, placa base) respecto a la instantánea anterior, de los equipos que estaban en línea en ambas. Los cambios de estado, sistema y kernel quedan fuera, y el archivo queda vacío (0 bytes) cuando nada cambió, para que el programador actúe solo cuando tenga contenido. Cada recopilación guarda una instantánea que aparece en la vista Instantáneas. Use una clave, porque no hay nadie para escribir la contraseña; los ejemplos usan la instalación Linux (`~/.local/bin/invenux`), y `python3 /ruta/a/invenux/app.py` funciona igual desde el código.
+
+cron (cada lunes a las 07:00, envía los cambios por correo cuando los hay):
+
+```sh
+0 7 * * 1 $HOME/.local/bin/invenux --input $HOME/inventario/equipos.xlsx --user inventario --key $HOME/.ssh/id_ed25519 --report-changes $HOME/inventario/cambios.csv && [ -s $HOME/inventario/cambios.csv ] && mail -s "Cambios de hardware" admin@example.com < $HOME/inventario/cambios.csv
+```
+
+Temporizador de systemd (`~/.config/systemd/user/invenux.service` e `invenux.timer`, luego `systemctl --user enable --now invenux.timer`):
+
+```ini
+# invenux.service
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/invenux --input %h/inventario/equipos.xlsx --user inventario --key %h/.ssh/id_ed25519 --report-changes %h/inventario/cambios.csv
+
+# invenux.timer
+[Timer]
+OnCalendar=Mon 07:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Programador de tareas de Windows (PowerShell, cada lunes a las 07:00):
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "C:\Herramientas\invenux.exe" -Argument '--input C:\Inventario\equipos.xlsx --user inventario --key C:\Users\yo\.ssh\id_ed25519 --report-changes C:\Inventario\cambios.csv'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 7am
+Register-ScheduledTask -TaskName "Inventario Invenux" -Action $action -Trigger $trigger
+```
+
 ## La hoja
 
 `.xlsx`, `.xlsm` o `.csv` (coma o punto y coma). La primera fila es el encabezado y cada fila siguiente es un equipo.

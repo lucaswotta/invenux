@@ -151,6 +151,41 @@ python3 app.py --input maquinas.xlsx --user inventario --key ~/.ssh/id_ed25519 -
 python3 app.py --input maquinas.xlsx --user inventario --ask-password
 ```
 
+### Coletas agendadas
+
+`--report-changes ARQUIVO` faz uma coleta pela linha de comando gravar também as mudanças de hardware (processador, memória, armazenamento, placa-mãe) em relação ao snapshot anterior, das máquinas que estavam online nas duas coletas. Mudanças de status, sistema e kernel ficam de fora, e o arquivo fica vazio (0 bytes) quando nada mudou, para o agendador agir só quando houver conteúdo. Cada coleta grava um snapshot que aparece na visão Snapshots. Use chave, porque não há ninguém para digitar senha; os exemplos usam a instalação Linux (`~/.local/bin/invenux`), e `python3 /caminho/para/invenux/app.py` funciona igual a partir do código.
+
+cron (toda segunda às 07:00, manda as mudanças por e-mail quando houver):
+
+```sh
+0 7 * * 1 $HOME/.local/bin/invenux --input $HOME/inventario/maquinas.xlsx --user inventario --key $HOME/.ssh/id_ed25519 --report-changes $HOME/inventario/mudancas.csv && [ -s $HOME/inventario/mudancas.csv ] && mail -s "Mudancas de hardware" admin@example.com < $HOME/inventario/mudancas.csv
+```
+
+Timer do systemd (`~/.config/systemd/user/invenux.service` e `invenux.timer`, depois `systemctl --user enable --now invenux.timer`):
+
+```ini
+# invenux.service
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/invenux --input %h/inventario/maquinas.xlsx --user inventario --key %h/.ssh/id_ed25519 --report-changes %h/inventario/mudancas.csv
+
+# invenux.timer
+[Timer]
+OnCalendar=Mon 07:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Agendador de Tarefas do Windows (PowerShell, toda segunda às 07:00):
+
+```powershell
+$action = New-ScheduledTaskAction -Execute "C:\Ferramentas\invenux.exe" -Argument '--input C:\Inventario\maquinas.xlsx --user inventario --key C:\Users\eu\.ssh\id_ed25519 --report-changes C:\Inventario\mudancas.csv'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 7am
+Register-ScheduledTask -TaskName "Inventario Invenux" -Action $action -Trigger $trigger
+```
+
 ## A planilha
 
 `.xlsx`, `.xlsm` ou `.csv` (vírgula ou ponto e vírgula). A primeira linha é o cabeçalho e cada linha seguinte é uma máquina.

@@ -134,6 +134,27 @@ def compute_records_diff(
     return changes
 
 
+HARDWARE_FIELDS = frozenset({"processador", "ram", "disk_type", "disk_size", "placa_mae"})
+
+
+def compute_hardware_changes(
+    previous_records: Sequence[Mapping[str, Any]],
+    current_records: Sequence[Mapping[str, Any]],
+) -> list[dict[str, str]]:
+    """Hardware fields that changed on machines collected in both snapshots.
+
+    A machine that was off in either run has no hardware values to compare, and
+    status, system and kernel changes are not hardware.
+    """
+    def online(records: Sequence[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+        return [record for record in records if str(record.get("status", "")).upper() == "ONLINE"]
+
+    return [
+        change for change in compute_records_diff(online(previous_records), online(current_records))
+        if change["field_key"] in HARDWARE_FIELDS
+    ]
+
+
 def compute_fleet_analytics(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Compute neutral hardware distribution metrics and location breakdown."""
     total = len(records)
