@@ -43,7 +43,7 @@ from snapshots import SnapshotStore, compute_fleet_analytics, compute_hardware_c
 import updates as release_updates
 
 APP_BRAND = "Invenux"
-APP_VERSION = "0.9.2"
+APP_VERSION = "1.0.0"
 THEME_CHOICES = ("light", "dark")
 # Browsers throttle timers in hidden tabs to about one per minute.
 BROWSER_IDLE_TIMEOUT_SECONDS = 180
