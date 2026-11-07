@@ -2061,7 +2061,7 @@
       <div class="popover-divider"></div>
       <div class="field-group">
         <label class="field-label" for="input-filepath" data-i18n="tp.path_label">Ou cole o caminho do arquivo</label>
-        <input id="input-filepath" class="field-input" type="text" data-i18n-placeholder="tp.path_placeholder" onchange="loadTargetPath(this.value)">
+        <input id="input-filepath" class="field-input" type="text" data-i18n-placeholder="tp.path_placeholder" onkeydown="submitTargetPath(event, this)" onchange="if (this.value !== this.dataset.submitted) loadTargetPath(this.value)">
       </div>
       <input id="file-upload-input" type="file" accept=".xlsx,.xlsm,.csv,.txt" style="display:none" onchange="uploadTargetFile(this)">
     </div>
@@ -4276,6 +4276,14 @@
     const file = e.dataTransfer && e.dataTransfer.files[0];
     if (file) uploadFile(file);
   });
+
+  // Enter reloads even an unchanged path, so an edited spreadsheet can be read again.
+  function submitTargetPath(event, input) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    input.dataset.submitted = input.value;
+    loadTargetPath(input.value);
+  }
 
   async function loadTargetPath(filepath) {
     if (!filepath || !filepath.trim()) return;
