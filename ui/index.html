@@ -29,8 +29,8 @@
     --specular: rgba(var(--overlay), 0.12);
 
     --text-primary: #F5F5F7;
-    --text-secondary: #98989D;
-    --text-tertiary: #6E6E73;
+    --text-secondary: #AEAEB2;
+    --text-tertiary: #98989D;
 
     --sys-blue: #0A84FF;
     --sys-blue-hover: #007AFF;
@@ -39,6 +39,10 @@
     --sys-red: #FF453A;
     --sys-teal: #64D2FF;
     --sys-purple: #BF5AF2;
+    /* Blue fills behind white text and blue text; --sys-blue is too light for 4.5:1 either way. */
+    --accent-fill: #0064D2;
+    --accent-text: #409CFF;
+    --focus-ring: #409CFF;
 
     /* RGB of the tint used for hover fills, scrollbars and hairlines; it flips with the theme. */
     --overlay: 255, 255, 255;
@@ -71,8 +75,8 @@
     --specular: rgba(var(--overlay), 0.7);
 
     --text-primary: #1D1D1F;
-    --text-secondary: #5E5E63;
-    --text-tertiary: #86868B;
+    --text-secondary: #545458;
+    --text-tertiary: #68686D;
 
     --sys-blue: #007AFF;
     --sys-blue-hover: #0062CC;
@@ -81,6 +85,8 @@
     --sys-red: #E5352B;
     --sys-teal: #1A9FD6;
     --sys-purple: #A24ED6;
+    --accent-text: #0062CC;
+    --focus-ring: #0062CC;
 
     --overlay: 0, 0, 0;
     --bg-popover: #FFFFFF;
@@ -94,6 +100,25 @@
     --field-bg: rgba(0, 0, 0, 0.055);
     --field-border: transparent;
     color-scheme: light;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  /* Opening a sheet focuses the dialog itself; the ring belongs on the controls inside. */
+  .sheet:focus-visible {
+    outline: none;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   /* Component display rules (.btn is inline-flex) would otherwise override hidden. */
@@ -299,7 +324,7 @@
     height: 24px;
     border: none;
     border-radius: 6px;
-    background: var(--sys-blue);
+    background: var(--accent-fill);
     color: #FFFFFF;
     font-family: inherit;
     font-size: 11.5px;
@@ -308,7 +333,7 @@
   }
 
   .update-pill:hover {
-    background: var(--sys-blue-hover);
+    background: #0058BA;
   }
 
   .update-pill:disabled {
@@ -439,18 +464,18 @@
   }
 
   .btn-primary {
-    background: linear-gradient(180deg, #1E8FFF 0%, #007AFF 100%);
+    background: linear-gradient(180deg, #0071E3 0%, #0062CC 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(0, 0, 0, 0.25);
     color: #FFFFFF;
     font-weight: 500;
   }
 
   .btn-primary:hover {
-    background: linear-gradient(180deg, #3399FF 0%, #0A84FF 100%);
+    background: linear-gradient(180deg, #0068DA 0%, #0058BA 100%);
   }
 
   .btn-danger {
-    background: linear-gradient(180deg, #FF5B52 0%, #FF453A 100%);
+    background: linear-gradient(180deg, #D93229 0%, #C4261E 100%);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(0, 0, 0, 0.25);
     color: #FFFFFF;
     font-weight: 500;
@@ -565,7 +590,7 @@
   }
 
   .menu-item:hover {
-    background: var(--sys-blue);
+    background: var(--accent-fill);
     color: #FFFFFF;
   }
 
@@ -575,7 +600,7 @@
   }
 
   .menu-item:hover span:last-child {
-    color: rgba(255, 255, 255, 0.8);
+    color: #FFFFFF;
   }
 
   /* Views */
@@ -635,13 +660,8 @@
     box-shadow: var(--shadow-seg);
   }
 
-  .seg-btn span {
-    color: var(--text-tertiary);
+  .seg-btn span:not(.seg-label) {
     font-weight: 400;
-  }
-
-  .seg-btn.active span {
-    color: var(--text-secondary);
   }
 
   .subbar-right {
@@ -762,6 +782,10 @@
     background: rgba(10, 132, 255, 0.22);
   }
 
+  tbody tr:focus-visible {
+    outline-offset: -2px;
+  }
+
   tbody td {
     padding: 0 10px;
     white-space: nowrap;
@@ -880,7 +904,7 @@
   .link-btn {
     border: none;
     background: none;
-    color: var(--sys-blue);
+    color: var(--accent-text);
     font: inherit;
     cursor: pointer;
   }
@@ -1192,6 +1216,27 @@
   }
 
   @media (max-width: 680px) {
+    .toolbar {
+      height: auto;
+      min-height: 52px;
+      padding: 8px 10px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .toolbar-group {
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .popover-trigger {
+      max-width: 100%;
+    }
+
+    .popover {
+      max-width: calc(100% - 24px);
+    }
+
     .subbar {
       height: auto;
       padding: 8px 10px;
@@ -1199,9 +1244,17 @@
       gap: 8px;
     }
 
+    .segmented-control {
+      flex-shrink: 1;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
     .subbar-right {
       margin-left: 0;
       flex-basis: 100%;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .search-input-wrap,
@@ -1212,7 +1265,8 @@
     }
 
     .summary-inline {
-      display: none;
+      order: 1;
+      flex-basis: 100%;
     }
 
     .parque-content,
@@ -1383,7 +1437,7 @@
     height: 18px;
     flex-shrink: 0;
     border-radius: 50%;
-    background: var(--sys-blue);
+    background: var(--accent-fill);
     color: #fff;
     font-size: 10.5px;
     display: inline-flex;
@@ -1850,8 +1904,14 @@
   }
 
   .snap-card {
+    width: 100%;
     padding: 10px 12px;
+    border: none;
     border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    text-align: left;
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -1892,7 +1952,7 @@
 <div class="app-shell">
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="app-brand" role="button" tabindex="0" data-i18n-title="ab.open" onclick="openAbout()" onkeydown="if (event.key === 'Enter') openAbout()">
+    <div class="app-brand" role="button" tabindex="0" data-i18n-title="ab.open" onclick="openAbout()" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openAbout(); }">
       <div class="app-icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" aria-hidden="true">
           <rect x="1" y="1" width="30" height="30" rx="7" fill="#1E1E22"/>
@@ -1912,28 +1972,28 @@
     </div>
 
     <div class="sidebar-label" data-i18n="nav.label">Visões</div>
-    <div id="main-nav" class="nav-list">
-      <button class="nav-btn active" data-i18n-title="nav.scan" title="Coleta" onclick="switchView('scan', this)">
+    <nav id="main-nav" class="nav-list" data-i18n-aria="nav.label">
+      <button class="nav-btn active" aria-current="page" data-i18n-title="nav.scan" title="Coleta" onclick="switchView('scan', this)">
         <span class="nav-btn-left">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/></svg>
           <span data-i18n="nav.scan">Coleta</span>
         </span>
         <span id="nav-count-scan" class="nav-count">0</span>
       </button>
       <button class="nav-btn" data-i18n-title="nav.fleet" title="Parque" onclick="switchView('dashboard', this)">
         <span class="nav-btn-left">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6" stroke-linecap="round"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6" stroke-linecap="round"/></svg>
           <span data-i18n="nav.fleet">Parque</span>
         </span>
       </button>
       <button class="nav-btn" data-i18n-title="nav.history" title="Snapshots" onclick="switchView('history', this)">
         <span class="nav-btn-left">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>
           <span data-i18n="nav.history">Snapshots</span>
         </span>
         <span id="nav-count-snapshots" class="nav-count">0</span>
       </button>
-    </div>
+    </nav>
 
     <div class="sidebar-footer">
       <div class="sidebar-footer-row">
@@ -1958,38 +2018,39 @@
 
   <!-- Main Content Area -->
   <main class="main-area">
+    <h1 class="sr-only">Invenux</h1>
     <header class="toolbar">
       <div class="toolbar-group">
-        <button id="targets-trigger" class="popover-trigger" onclick="togglePanel('targets')">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <button id="targets-trigger" class="popover-trigger" aria-expanded="false" aria-controls="popover-targets" onclick="togglePanel('targets')">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           <span class="trigger-label" data-i18n="tb.targets">Alvos:</span>
           <span id="targets-pill-value" class="trigger-value">Selecionar lista...</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
 
-        <button id="ssh-trigger" class="popover-trigger" onclick="togglePanel('ssh')">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <button id="ssh-trigger" class="popover-trigger" aria-expanded="false" aria-controls="popover-ssh" onclick="togglePanel('ssh')">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.7"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <span class="trigger-label">SSH:</span>
           <span id="ssh-pill-value" class="trigger-value">Configurar acesso</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg aria-hidden="true" class="chevron" viewBox="0 0 24 24" fill="none" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
       </div>
 
       <div class="toolbar-group">
         <button class="btn" data-i18n-title="tb.help" title="Como usar" onclick="openHelp()">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.8.8c0 1.6-2.4 2-2.4 3.5"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 0 1 4.8.8c0 1.6-2.4 2-2.4 3.5"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
           <span class="btn-text" data-i18n="tb.help">Como usar</span>
         </button>
-        <button id="export-trigger" class="btn" data-i18n-title="tb.export" title="Exportar" onclick="togglePanel('export')">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <button id="export-trigger" class="btn" aria-expanded="false" aria-controls="popover-export" data-i18n-title="tb.export" title="Exportar" onclick="togglePanel('export')">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="1.7"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span class="btn-text" data-i18n="tb.export">Exportar</span>
         </button>
         <button id="scan-btn" class="btn btn-primary" onclick="handleScanAction()">Iniciar coleta</button>
       </div>
     </header>
 
-    <div id="popover-targets" class="popover">
-      <div class="popover-title" data-i18n="tp.title">Lista de máquinas</div>
+    <div id="popover-targets" class="popover" role="dialog" aria-labelledby="popover-targets-title">
+      <div id="popover-targets-title" class="popover-title" data-i18n="tp.title">Lista de máquinas</div>
       <div class="popover-text" data-i18n-html="tp.text"></div>
       <div class="popover-actions">
         <button class="btn btn-primary" onclick="browseTargetFile()" data-i18n="tp.choose">Escolher planilha…</button>
@@ -2005,8 +2066,8 @@
       <input id="file-upload-input" type="file" accept=".xlsx,.xlsm,.csv,.txt" style="display:none" onchange="uploadTargetFile(this)">
     </div>
 
-    <div id="popover-ssh" class="popover">
-      <div class="popover-title" data-i18n="sp.title">Credenciais e conexão SSH</div>
+    <div id="popover-ssh" class="popover" role="dialog" aria-labelledby="popover-ssh-title">
+      <div id="popover-ssh-title" class="popover-title" data-i18n="sp.title">Credenciais e conexão SSH</div>
       <div class="field-row field-row-port">
         <div class="field-group">
           <label class="field-label" for="input-ssh-user" data-i18n="sp.user">Usuário SSH</label>
@@ -2021,7 +2082,7 @@
         <label class="field-label" for="input-ssh-key" data-i18n="sp.key">Chave privada (ou em branco para senha)</label>
         <div class="field-input-row">
           <input id="input-ssh-key" class="field-input" type="text" placeholder="~/.ssh/id_ed25519" oninput="syncSshSettings()">
-          <button class="btn" onclick="browseKeyFile()">...</button>
+          <button class="btn" onclick="browseKeyFile()" data-i18n-aria="a11y.browse_key" data-i18n-title="a11y.browse_key">...</button>
         </div>
       </div>
       <div class="field-group">
@@ -2044,7 +2105,7 @@
       </label>
     </div>
 
-    <div id="popover-export" class="popover">
+    <div id="popover-export" class="popover" role="dialog" data-i18n-aria="tb.export">
       <button class="menu-item" onclick="exportReport('XLSX')"><span data-i18n="ep.xlsx">Planilha Excel</span><span>.xlsx</span></button>
       <button class="menu-item" onclick="exportReport('HTML')"><span data-i18n="ep.html">Relatório interativo</span><span>.html</span></button>
       <button class="menu-item" onclick="exportReport('CSV')"><span data-i18n="ep.csv">Dados tabulares</span><span>.csv</span></button>
@@ -2055,18 +2116,18 @@
 
     <section id="view-scan" class="view active">
       <div class="subbar">
-        <div class="segmented-control">
-          <button class="seg-btn active" onclick="setStatusFilter('ALL', this)"><span class="seg-label" data-i18n="f.all">Todas</span> <span id="count-all">0</span></button>
-          <button class="seg-btn" onclick="setStatusFilter('ONLINE', this)"><span class="seg-label" data-i18n="f.online">Online</span> <span id="count-online">0</span></button>
-          <button class="seg-btn" onclick="setStatusFilter('OFFLINE', this)"><span class="seg-label" data-i18n="f.offline">Offline</span> <span id="count-offline">0</span></button>
-          <button class="seg-btn" onclick="setStatusFilter('ERROR', this)"><span class="seg-label" data-i18n="f.error">Falha SSH</span> <span id="count-error">0</span></button>
+        <div class="segmented-control" role="group" data-i18n-aria="a11y.status_filter">
+          <button class="seg-btn active" aria-pressed="true" onclick="setStatusFilter('ALL', this)"><span class="seg-label" data-i18n="f.all">Todas</span> <span id="count-all">0</span></button>
+          <button class="seg-btn" aria-pressed="false" onclick="setStatusFilter('ONLINE', this)"><span class="seg-label" data-i18n="f.online">Online</span> <span id="count-online">0</span></button>
+          <button class="seg-btn" aria-pressed="false" onclick="setStatusFilter('OFFLINE', this)"><span class="seg-label" data-i18n="f.offline">Offline</span> <span id="count-offline">0</span></button>
+          <button class="seg-btn" aria-pressed="false" onclick="setStatusFilter('ERROR', this)"><span class="seg-label" data-i18n="f.error">Falha SSH</span> <span id="count-error">0</span></button>
         </div>
 
         <div class="subbar-right">
-          <div id="status-banner" class="summary-inline"><span></span></div>
+          <div id="status-banner" class="summary-inline" role="status" aria-live="polite"><span></span></div>
           <div class="search-input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input id="search-input" class="search-input" type="text" data-i18n-placeholder="search.ph" oninput="renderScanTable()">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="search-input" class="search-input" type="text" data-i18n-placeholder="search.ph" data-i18n-aria="a11y.search" oninput="renderScanTable()">
           </div>
         </div>
       </div>
@@ -2138,7 +2199,7 @@
               <button class="link-btn" onclick="openHelp()" data-i18n="tb.help">Como usar</button>
             </div>
           </div>
-          <table id="hosts-table">
+          <table id="hosts-table" data-i18n-aria="a11y.hosts">
             <thead>
               <tr>
                 <th style="width: 10%;" data-i18n="col.status">Status</th>
@@ -2155,7 +2216,7 @@
           </table>
         </div>
 
-        <aside id="inspector-pane" class="inspector-pane"></aside>
+        <aside id="inspector-pane" class="inspector-pane" tabindex="-1" data-i18n-aria="a11y.details"></aside>
       </div>
     </section>
 
@@ -2236,7 +2297,7 @@
       <div class="snapshots-layout">
         <aside class="snapshots-sidebar">
           <div class="sidebar-label" data-i18n="hi.label">Histórico local</div>
-          <div id="snapshots-list"></div>
+          <div id="snapshots-list" role="group" data-i18n-aria="hi.label"></div>
         </aside>
 
         <div class="snapshots-content">
@@ -2270,7 +2331,7 @@
 </div>
 
 <div id="help-sheet" class="sheet-backdrop" onclick="if (event.target === this) closeHelp()">
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="help-title">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="help-title" tabindex="-1">
     <div class="sheet-header">
       <span id="help-title" class="sheet-title" data-i18n="hp.title">Como usar o Invenux</span>
       <div class="sheet-header-actions">
@@ -2356,7 +2417,7 @@
 </div>
 
 <div id="about-sheet" class="sheet-backdrop" onclick="if (event.target === this) closeAbout()">
-  <div class="sheet sheet-narrow" role="dialog" aria-modal="true" aria-labelledby="about-title">
+  <div class="sheet sheet-narrow" role="dialog" aria-modal="true" aria-labelledby="about-title" tabindex="-1">
     <div class="sheet-header">
       <div class="about-heading">
         <div class="about-icon" aria-hidden="true"></div>
@@ -2373,14 +2434,14 @@
       <h4 data-i18n="ab.prefs">Preferências</h4>
       <div class="pref-grid">
         <span data-i18n="footer.language">Idioma</span>
-        <div class="mini-seg" role="radiogroup" data-pref="language" data-i18n-title="footer.language">
+        <div class="mini-seg" role="group" data-pref="language" data-i18n-title="footer.language">
           <button type="button" data-value="auto" class="lang-auto" data-i18n="pref.auto">Auto</button>
           <button type="button" data-value="pt-br" title="Português (Brasil)">PT</button>
           <button type="button" data-value="en" title="English">EN</button>
           <button type="button" data-value="es" title="Español">ES</button>
         </div>
         <span data-i18n="footer.theme">Tema</span>
-        <div class="mini-seg" role="radiogroup" data-pref="theme" data-i18n-title="footer.theme">
+        <div class="mini-seg" role="group" data-pref="theme" data-i18n-title="footer.theme">
           <button type="button" data-value="system" data-i18n="pref.auto">Auto</button>
           <button type="button" data-value="light" data-i18n="theme.light">Claro</button>
           <button type="button" data-value="dark" data-i18n="theme.dark">Escuro</button>
@@ -2514,6 +2575,11 @@
   "f.offline": "Offline",
   "f.error": "Falha SSH",
   "search.ph": "Buscar máquina, IP, local, hardware...",
+  "a11y.browse_key": "Procurar chave privada",
+  "a11y.status_filter": "Filtrar por status",
+  "a11y.search": "Buscar máquinas",
+  "a11y.hosts": "Máquinas",
+  "a11y.details": "Detalhes da máquina",
   "col.status": "Status",
   "col.ip": "Endereço IP",
   "col.hostname": "Hostname",
@@ -2780,6 +2846,11 @@
   "f.offline": "Offline",
   "f.error": "SSH failure",
   "search.ph": "Search machine, IP, location, hardware...",
+  "a11y.browse_key": "Browse for a private key",
+  "a11y.status_filter": "Filter by status",
+  "a11y.search": "Search machines",
+  "a11y.hosts": "Machines",
+  "a11y.details": "Machine details",
   "col.status": "Status",
   "col.ip": "IP address",
   "col.hostname": "Hostname",
@@ -3046,6 +3117,11 @@
   "f.offline": "Sin conexión",
   "f.error": "Fallo SSH",
   "search.ph": "Buscar equipo, IP, ubicación, hardware...",
+  "a11y.browse_key": "Buscar clave privada",
+  "a11y.status_filter": "Filtrar por estado",
+  "a11y.search": "Buscar equipos",
+  "a11y.hosts": "Equipos",
+  "a11y.details": "Detalles del equipo",
   "col.status": "Estado",
   "col.ip": "Dirección IP",
   "col.hostname": "Hostname",
@@ -3246,6 +3322,7 @@
     document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = tr(el.dataset.i18nHtml); });
     document.querySelectorAll("[data-i18n-placeholder]").forEach(el => { el.placeholder = tr(el.dataset.i18nPlaceholder); });
     document.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = tr(el.dataset.i18nTitle); });
+    document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", tr(el.dataset.i18nAria)); });
   }
 
   function syncPreferenceControls(cfg) {
@@ -3258,6 +3335,7 @@
   function markPreference(pref, value) {
     document.querySelectorAll(`.mini-seg[data-pref="${pref}"] button`).forEach(button => {
       button.classList.toggle("active", button.dataset.value === value);
+      button.setAttribute("aria-pressed", String(button.dataset.value === value));
     });
   }
 
@@ -3427,15 +3505,31 @@
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
     document.getElementById("view-" + viewName).classList.add("active");
     if (btn) {
-      document.querySelectorAll("#main-nav .nav-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll("#main-nav .nav-btn").forEach(b => {
+        b.classList.remove("active");
+        b.removeAttribute("aria-current");
+      });
       btn.classList.add("active");
+      btn.setAttribute("aria-current", "page");
     }
     closePopovers();
   }
 
-  function closePopovers() {
+  const FOCUSABLE = "button:not([disabled]), input:not([disabled]):not([type=hidden]), [tabindex]:not([tabindex='-1'])";
+
+  function focusableIn(container) {
+    return Array.from(container.querySelectorAll(FOCUSABLE)).filter(el => el.offsetParent !== null);
+  }
+
+  // returnFocus puts focus back on the trigger when the panel held it (Escape, an action inside).
+  function closePopovers(returnFocus = false) {
+    const open = document.querySelector(".popover.open");
+    const trigger = open && document.querySelector(`[aria-controls="${open.id}"]`);
+    const hadFocus = open && open.contains(document.activeElement);
     document.querySelectorAll(".popover").forEach(p => p.classList.remove("open"));
     document.querySelectorAll(".popover-trigger").forEach(t => t.classList.remove("open"));
+    document.querySelectorAll("[aria-controls^='popover-']").forEach(t => t.setAttribute("aria-expanded", "false"));
+    if (trigger && (returnFocus || hadFocus)) trigger.focus();
   }
 
   // Not togglePopover: inline handlers would resolve it to the element's native Popover API method.
@@ -3447,34 +3541,77 @@
     if (pop && !wasOpen) {
       pop.classList.add("open");
       if (trig) {
-        trig.classList.add("open");
+        trig.setAttribute("aria-expanded", "true");
+        if (trig.classList.contains("popover-trigger")) trig.classList.add("open");
         const area = document.querySelector(".main-area").getBoundingClientRect();
         const anchor = trig.getBoundingClientRect();
         const left = Math.min(anchor.left - area.left, area.width - pop.offsetWidth - 12);
         pop.style.left = `${Math.max(12, left)}px`;
         pop.style.top = `${anchor.bottom - area.top + 6}px`;
       }
+      const first = focusableIn(pop)[0];
+      if (first) first.focus();
     }
   }
 
   document.addEventListener("keydown", (e) => {
+    const sheet = document.querySelector(".sheet-backdrop.open");
     if (e.key === "Escape") {
-      closeHelp();
-      closeAbout();
-      closePopovers();
+      if (sheet) closeSheet(sheet.id);
+      else closePopovers(true);
+      return;
+    }
+    // Sheets are modal: Tab cycles inside them.
+    if (e.key === "Tab" && sheet) {
+      const items = focusableIn(sheet);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && (document.activeElement === first || !items.includes(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !items.includes(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
+      }
     }
   });
 
-  function openAbout() {
+  const sheetOpeners = {};
+
+  function openSheet(id) {
+    const backdrop = document.getElementById(id);
+    if (backdrop.classList.contains("open")) return;
+    const active = document.activeElement;
+    sheetOpeners[id] = active && active !== document.body && !active.closest(".popover") ? active : null;
+    // A control inside a closing popover disappears; focus returns to that popover's trigger.
+    const popover = active && active.closest(".popover");
+    if (popover) sheetOpeners[id] = document.querySelector(`[aria-controls="${popover.id}"]`);
     closePopovers();
+    backdrop.classList.add("open");
+    document.querySelector(".app-shell").inert = true;
+    backdrop.querySelector(".sheet").focus();
+  }
+
+  function closeSheet(id) {
+    const backdrop = document.getElementById(id);
+    if (!backdrop.classList.contains("open")) return;
+    backdrop.classList.remove("open");
+    if (!document.querySelector(".sheet-backdrop.open")) document.querySelector(".app-shell").inert = false;
+    const opener = sheetOpeners[id];
+    sheetOpeners[id] = null;
+    if (opener && opener.isConnected) opener.focus();
+  }
+
+  function openAbout() {
     closeHelp();
     const icon = document.querySelector("#about-sheet .about-icon");
     if (!icon.firstChild) icon.innerHTML = document.querySelector(".app-icon svg").outerHTML;
-    document.getElementById("about-sheet").classList.add("open");
+    openSheet("about-sheet");
   }
 
   function closeAbout() {
-    document.getElementById("about-sheet").classList.remove("open");
+    closeSheet("about-sheet");
   }
 
   async function openLink(name) {
@@ -3486,13 +3623,13 @@
   }
 
   function openHelp() {
-    closePopovers();
+    closeAbout();
     renderPaths();
-    document.getElementById("help-sheet").classList.add("open");
+    openSheet("help-sheet");
   }
 
   function closeHelp() {
-    document.getElementById("help-sheet").classList.remove("open");
+    closeSheet("help-sheet");
   }
 
   function shortPath(path) {
@@ -3639,8 +3776,10 @@
 
   function setStatusFilter(filter, btn) {
     appState.statusFilter = filter;
-    document.querySelectorAll(".segmented-control .seg-btn").forEach(b => b.classList.remove("active"));
-    if (btn) btn.classList.add("active");
+    document.querySelectorAll(".segmented-control .seg-btn").forEach(b => {
+      b.classList.toggle("active", b === btn);
+      b.setAttribute("aria-pressed", String(b === btn));
+    });
     renderScanTable();
   }
 
@@ -3714,7 +3853,12 @@
       const next = previous ? previous.nextSibling : tbody.firstChild;
       if (next !== row) tbody.insertBefore(row, next);
       previous = row;
-      row.classList.toggle("selected", r.ip === appState.selectedHostIp);
+      const selected = r.ip === appState.selectedHostIp;
+      row.classList.toggle("selected", selected);
+      // One row is in the tab order; arrow keys move between rows (moveRowFocus).
+      row.tabIndex = selected ? 0 : -1;
+      if (selected) row.setAttribute("aria-current", "true");
+      else row.removeAttribute("aria-current");
       if (row.record === r && row.language === currentLang) continue;
       row.record = r;
       row.language = currentLang;
@@ -3751,6 +3895,33 @@
   function selectHost(ip) {
     appState.selectedHostIp = ip;
     renderScanTable();
+  }
+
+  function moveRowFocus(event) {
+    const row = event.target.closest("tr[data-ip]");
+    if (!row) return;
+    const rows = Array.from(row.parentElement.querySelectorAll("tr[data-ip]"));
+    const index = rows.indexOf(row);
+    const targets = {
+      ArrowDown: index + 1,
+      ArrowUp: index - 1,
+      Home: 0,
+      End: rows.length - 1,
+      PageDown: Math.min(rows.length - 1, index + 10),
+      PageUp: Math.max(0, index - 10),
+    };
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectHost(row.dataset.ip);
+      document.getElementById("inspector-pane").focus();
+      return;
+    }
+    if (!(event.key in targets)) return;
+    event.preventDefault();
+    const next = rows[targets[event.key]];
+    if (!next) return;
+    selectHost(next.dataset.ip);
+    next.focus();
   }
 
   function formatCollected(value) {
@@ -3950,16 +4121,22 @@
       appState.selectedSnapshotId = list[0].id;
     }
 
+    const focusedId = document.activeElement && document.activeElement.dataset
+      ? document.activeElement.dataset.snapshotId : undefined;
     container.innerHTML = list.map(snap => {
-      const active = snap.id === appState.selectedSnapshotId ? "active" : "";
-      return `<div class="snap-card ${active}" onclick="selectSnapshot(${snap.id})">
-        <div class="snap-card-top">
+      const active = snap.id === appState.selectedSnapshotId;
+      return `<button type="button" class="snap-card ${active ? "active" : ""}" aria-pressed="${active}" data-snapshot-id="${snap.id}" onclick="selectSnapshot(${snap.id})">
+        <span class="snap-card-top">
           <span>${escapeHtml(snap.created_at)}</span>
           <span>${tr("hi.card_hosts", { n: snap.total_hosts })}</span>
-        </div>
-        <div class="snap-card-sub">${tr("hi.card_sub", { online: snap.online_hosts, changes: snap.changes_count })}</div>
-      </div>`;
+        </span>
+        <span class="snap-card-sub">${tr("hi.card_sub", { online: snap.online_hosts, changes: snap.changes_count })}</span>
+      </button>`;
     }).join("");
+    if (focusedId) {
+      const card = container.querySelector(`[data-snapshot-id="${focusedId}"]`);
+      if (card) card.focus();
+    }
   }
 
   async function selectSnapshot(snapshotId) {
@@ -4016,11 +4193,16 @@
   }
 
   function setBanner(text, filePath) {
+    const banner = document.getElementById("status-banner");
+    // The banner is a live region; rewriting the same text would announce it again.
+    if (banner.dataset.text === text && (banner.dataset.path || "") === (filePath || "")) return;
+    banner.dataset.text = text;
+    banner.dataset.path = filePath || "";
     const actions = filePath
       ? `<button class="btn btn-small" data-path="${escapeHtml(filePath)}" onclick="openFile(this.dataset.path)">${tr("bn.open")}</button>
          <button class="btn btn-small" onclick="openLocation('reports')">${tr("bn.open_folder")}</button>`
       : "";
-    document.getElementById("status-banner").innerHTML =
+    banner.innerHTML =
       `<span title="${escapeHtml(text)}">${escapeHtml(text)}</span>${actions}`;
   }
 
@@ -4151,6 +4333,7 @@
     await syncSshSettings();
     try {
       const data = await api("/api/scan/start", "POST");
+      closePopovers();
       applyServerState(data);
       startPolling();
     } catch (err) {
@@ -4272,6 +4455,7 @@
   window.addEventListener("DOMContentLoaded", async () => {
     currentLang = window.__INVENUX_LANG__ || "en";
     applyTranslations();
+    document.getElementById("hosts-tbody").addEventListener("keydown", moveRowFocus);
     setInterval(() => api("/api/ping").catch(() => {}), 20000);
     try {
       const data = await api("/api/state");

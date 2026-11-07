@@ -10,6 +10,8 @@ class Row {
     this.dataset = {};
     this.classList = { toggle() {} };
   }
+  setAttribute() {}
+  removeAttribute() {}
   set innerHTML(value) { this.html = value; writes++; }
   get nextSibling() { return tbody.children[tbody.children.indexOf(this) + 1] || null; }
   remove() { tbody.children.splice(tbody.children.indexOf(this), 1); }
